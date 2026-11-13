@@ -48,6 +48,8 @@ export interface CrmPort {
    * `CrmTaskRef.status`. Without this a task can be written and never closed.
    */
   updateTaskStatus(taskId: string, status: string): Promise<CrmTaskRef>;
+  /** Patch a task's status, due date or assignee (a WorkspaceMember id; null unassigns). */
+  updateTask(taskId: string, patch: { status?: string; dueAt?: string; assigneeId?: string | null }): Promise<CrmTaskRef>;
   /** Drop a commitment that is not happening. */
   deleteTask(taskId: string): Promise<void>;
   /** The deep-link a teammate opens to see a task. */
@@ -58,6 +60,18 @@ export interface CrmPort {
   listOpportunities(input?: { companyId?: string; limit?: number }): Promise<CrmOpportunityRef[]>;
   /** Move an opportunity between stages. */
   updateOpportunityStage(opportunityId: string, stage: string): Promise<CrmOpportunityRef>;
+  /** Patch an opportunity's stage, owner (a WorkspaceMember id) or name. */
+  updateOpportunity(
+    opportunityId: string,
+    patch: { stage?: string; ownerId?: string | null; name?: string },
+  ): Promise<CrmOpportunityRef>;
+  /** Remove an opportunity that is not a lead (blank, duplicate). */
+  deleteOpportunity(opportunityId: string): Promise<void>;
+  /** Patch a company's relationship type or account owner. */
+  updateCompany(
+    companyId: string,
+    patch: { relationshipType?: string | null; accountOwnerId?: string | null },
+  ): Promise<CrmCompanyRef>;
   /** The deep-link a teammate opens to see an opportunity. */
   opportunityUrl(opportunityId: string): string;
 }

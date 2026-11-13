@@ -399,6 +399,48 @@ describe("CrmClient tasks — the durable half of anything scheduled", () => {
     expect(ref.id).toBe("task1");
   });
 
+  it("patches only the task fields given, assignee included", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "task1", title: "T", status: "TODO" } })));
+    const ref = await client.updateTask("task1", { assigneeId: "member_alan", status: "DONE" });
+    expect(calls[0]).toMatchObject({ url: "https://twenty.test/rest/tasks/task1", method: "PATCH" });
+    expect(calls[0].body).toEqual({ assigneeId: "member_alan", status: "DONE" });
+    expect(ref.status).toBe("DONE");
+  });
+
+  it("unassigns with null and never sends an absent field", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "task1" } })));
+    await client.updateTask("task1", { assigneeId: null, dueAt: undefined });
+    expect(calls[0].body).toEqual({ assigneeId: null });
+  });
+
+  it("patches an opportunity's owner and deletes one by id", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "opp1", name: "Lead", stage: "NEW" } })));
+    const ref = await client.updateOpportunity("opp1", { ownerId: "member_alan" });
+    expect(calls[0]).toMatchObject({ url: "https://twenty.test/rest/opportunities/opp1", method: "PATCH", body: { ownerId: "member_alan" } });
+    expect(ref.stage).toBe("NEW");
+    await client.deleteOpportunity("opp2");
+    expect(calls[1]).toMatchObject({ url: "https://twenty.test/rest/opportunities/opp2", method: "DELETE" });
+  });
+
+  it("still moves an opportunity's stage through the patch", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "opp1" } })));
+    const ref = await client.updateOpportunityStage("opp1", "MEETING");
+    expect(calls[0].body).toEqual({ stage: "MEETING" });
+    expect(ref.stage).toBe("MEETING");
+  });
+
+  it("patches a company's relationship type", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "comp_1", name: "Mary" } })));
+    const ref = await client.updateCompany("comp_1", { relationshipType: "CLIENT" });
+    expect(calls[0]).toMatchObject({ url: "https://twenty.test/rest/companies/comp_1", method: "PATCH", body: { relationshipType: "CLIENT" } });
+    expect(ref.id).toBe("comp_1");
+  });
+
   it("deletes a task by id", async () => {
     const calls: Call[] = [];
     const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: {} })));
