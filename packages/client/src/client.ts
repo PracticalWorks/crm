@@ -480,9 +480,37 @@ export class CrmClient implements CrmPort {
   }
 
   async updateOpportunityStage(opportunityId: string, stage: string): Promise<CrmOpportunityRef> {
-    const res = await this.request("PATCH", `/opportunities/${opportunityId}`, { stage });
+    return this.updateOpportunity(opportunityId, { stage });
+  }
+
+  /**
+   * Patch an opportunity: only the fields given are sent, and what we sent wins over the echo.
+   * `null` clears the owner; `stage` and `name` are always values.
+   */
+  async updateOpportunity(
+    opportunityId: string,
+    patch: { stage?: string; ownerId?: string | null; name?: string },
+  ): Promise<CrmOpportunityRef> {
+    const res = await this.request("PATCH", `/opportunities/${opportunityId}`, definedOnly(patch));
     const raw = unwrap(res, "updateOpportunity", "opportunity");
-    return this.toOpportunityRef({ ...raw, id: raw?.id ?? opportunityId });
+    return this.toOpportunityRef({ ...raw, ...definedOnly(patch), id: raw?.id ?? opportunityId });
+  }
+
+  async deleteOpportunity(opportunityId: string): Promise<void> {
+    await this.request("DELETE", `/opportunities/${opportunityId}`);
+  }
+
+  /**
+   * Patch a company. `relationshipType` is the workspace's own select value, passed through.
+   * `null` clears either field.
+   */
+  async updateCompany(
+    companyId: string,
+    patch: { relationshipType?: string | null; accountOwnerId?: string | null },
+  ): Promise<CrmCompanyRef> {
+    const res = await this.request("PATCH", `/companies/${companyId}`, definedOnly(patch));
+    const raw = unwrap(res, "updateCompany", "company");
+    return this.toCompanyRef({ ...raw, id: raw?.id ?? companyId });
   }
 
   async createOpportunity(input: {
@@ -517,16 +545,27 @@ export class CrmClient implements CrmPort {
   }
 
   async updateTaskDueAt(taskId: string, dueAt: string): Promise<CrmTaskRef> {
-    const updated = await this.request("PATCH", `/tasks/${taskId}`, { dueAt });
-    const raw = unwrap(updated, "updateTask", "task");
-    return { ...this.toTaskRef({ ...raw, id: raw?.id ?? taskId }, null), dueAt };
+    return this.updateTask(taskId, { dueAt });
   }
 
-  /** Move a commitment between columns. What we sent wins over the echo, same as dueAt. */
+  /** Move a commitment between columns. */
   async updateTaskStatus(taskId: string, status: string): Promise<CrmTaskRef> {
-    const updated = await this.request("PATCH", `/tasks/${taskId}`, { status });
+    return this.updateTask(taskId, { status });
+  }
+
+  /**
+   * Patch a task: only the fields given are sent, and what we sent wins over the echo.
+   * `assigneeId` is a WorkspaceMember id, as on createTask. `null` clears the fields that
+   * may be empty (assignee, due date); `status` is always a value.
+   */
+  async updateTask(
+    taskId: string,
+    patch: { status?: string; dueAt?: string | null; assigneeId?: string | null },
+  ): Promise<CrmTaskRef> {
+    const updated = await this.request("PATCH", `/tasks/${taskId}`, definedOnly(patch));
     const raw = unwrap(updated, "updateTask", "task");
-    return { ...this.toTaskRef({ ...raw, id: raw?.id ?? taskId }, null), status };
+    const ref = this.toTaskRef({ ...raw, id: raw?.id ?? taskId }, null);
+    return { ...ref, ...(patch.status !== undefined && { status: patch.status }), ...(patch.dueAt !== undefined && { dueAt: patch.dueAt }) };
   }
 
   /** Shape a raw Twenty task record into the ref callers get. `companyId` is
@@ -546,4 +585,9 @@ export class CrmClient implements CrmPort {
   async deleteTask(taskId: string): Promise<void> {
     await this.request("DELETE", `/tasks/${taskId}`);
   }
+}
+
+/** A PATCH body with the undefined keys dropped, so an absent field is never cleared. */
+function definedOnly<T extends Record<string, unknown>>(patch: T): Partial<T> {
+  return Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) as Partial<T>;
 }
