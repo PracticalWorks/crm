@@ -7,6 +7,6 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "guard": "node scripts/guard.mjs"
+    "guard": "node --test scripts/guard.test.mjs && node scripts/guard.mjs"
   }
 }
