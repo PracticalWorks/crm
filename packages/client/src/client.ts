@@ -1,5 +1,6 @@
-import type { CrmPort } from "./port.js";
-import type { CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef } from "./schemas.js";
+import { LEAD_STAGES, type LeadLink, type LeadOutcome, type LeadStep } from "./lead-record.js";
+import type { CrmPort, LeadFields, LeadRecordPort } from "./port.js";
+import type { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef } from "./schemas.js";
 
 /**
  * CrmClient — one shared Twenty CRM integration. Wraps Twenty's REST API
@@ -149,7 +150,17 @@ const PERSON_FIELDS = [
   },
 ] as const;
 
-/** What `ensurePersonFields` found and did. `created` is empty on a dry run; `missing` is what a run with apply creates. */
+/** A custom field as Twenty's metadata API creates it. Select values are UPPER_SNAKE. */
+export interface FieldSpec {
+  name: string;
+  label: string;
+  type: string;
+  description?: string;
+  icon?: string;
+  options?: ReadonlyArray<{ value: string; label: string; position?: number; color?: string }>;
+}
+
+/** What `ensureFields` / `ensurePersonFields` found and did. `created` is empty on a dry run; `missing` is what a run with apply creates. */
 export interface PersonFieldsResult {
   present: string[];
   missing: string[];
@@ -191,7 +202,7 @@ function allPhones(raw: any): string[] {
   return [raw?.phones?.primaryPhoneNumber ?? raw?.phone ?? "", ...more].filter(Boolean);
 }
 
-export class CrmClient implements CrmPort {
+export class CrmClient implements CrmPort, LeadRecordPort {
   private readonly root: string;
   private readonly api: string;
 
@@ -355,40 +366,65 @@ export class CrmClient implements CrmPort {
   }
 
   /**
+   * Set fields on a Person, custom ones included (an outreach sequence's state, say):
+   * only the fields given are sent, and `null` clears one. The field must exist on
+   * the workspace (see `ensureFields`); Twenty refuses an unknown one with a 400.
+   */
+  async updatePerson(personId: string, patch: Record<string, unknown>): Promise<CrmPersonRef> {
+    const body = definedOnly(patch);
+    const res = await this.request("PATCH", `/people/${personId}`, body);
+    const raw = unwrap(res, "updatePerson", "person");
+    return toPersonRef({ ...raw, id: raw?.id ?? personId });
+  }
+
+  /**
    * Make sure Person carries the custom `lane` and `source` fields, creating
-   * only what is missing, and only when `apply` is true. Idempotent: a second
-   * run finds both present and writes nothing. A field that exists with the
-   * wrong type, or a `lane` missing one of PERSON_LANES, is an error, never an
-   * overwrite: changing a live field's options is an owner's call.
+   * only what is missing, and only when `apply` is true. A wrapper over
+   * `ensureFields`, kept so its callers change nothing.
    */
   async ensurePersonFields(opts: { apply: boolean }): Promise<PersonFieldsResult> {
+    return this.ensureFields("person", PERSON_FIELDS, opts);
+  }
+
+  /**
+   * Make sure an object carries these custom fields, creating only what is
+   * missing, and only when `apply` is true. Idempotent: a second run finds them
+   * present and writes nothing. A field that exists with the wrong type, or a
+   * select missing one of the wanted options, is an error, never an overwrite:
+   * changing a live field is an owner's call.
+   */
+  async ensureFields(
+    objectNameSingular: string,
+    specs: readonly FieldSpec[],
+    opts: { apply: boolean },
+  ): Promise<PersonFieldsResult> {
     const objects = unwrap(await this.request("GET", "/metadata/objects"), "objects");
-    const person = (Array.isArray(objects) ? objects : []).find((o) => o?.nameSingular === "person");
-    if (!person?.id) throw new Error("crm metadata: no person object in this workspace");
-    const fields = extractFields(person.fields);
-    if (!fields) throw new Error("crm metadata: the person object came back without its fields; refusing to create blind");
+    const target = (Array.isArray(objects) ? objects : []).find((o) => o?.nameSingular === objectNameSingular);
+    if (!target?.id) throw new Error(`crm metadata: no ${objectNameSingular} object in this workspace`);
+    const fields = extractFields(target.fields);
+    if (!fields) throw new Error(`crm metadata: the ${objectNameSingular} object came back without its fields; refusing to create blind`);
 
     const result: PersonFieldsResult = { present: [], missing: [], created: [] };
-    for (const wanted of PERSON_FIELDS) {
+    for (const wanted of specs) {
       const existing = fields.find((f) => f?.name === wanted.name);
       if (!existing) {
         result.missing.push(wanted.name);
         continue;
       }
       if (existing.type !== wanted.type) {
-        throw new Error(`crm metadata: person.${wanted.name} is ${existing.type}, expected ${wanted.type}`);
+        throw new Error(`crm metadata: ${objectNameSingular}.${wanted.name} is ${existing.type}, expected ${wanted.type}`);
       }
-      if ("options" in wanted) {
+      if (wanted.options) {
         const have = new Set((existing.options ?? []).map((o: { value?: string }) => o?.value));
         const absent = wanted.options.filter((o) => !have.has(o.value)).map((o) => o.value);
-        if (absent.length) throw new Error(`crm metadata: person.lane lacks options ${absent.join(", ")}`);
+        if (absent.length) throw new Error(`crm metadata: ${objectNameSingular}.${wanted.name} lacks options ${absent.join(", ")}`);
       }
       result.present.push(wanted.name);
     }
     if (!opts.apply) return result;
     for (const name of result.missing) {
-      const wanted = PERSON_FIELDS.find((f) => f.name === name)!;
-      await this.request("POST", "/metadata/fields", { ...wanted, objectMetadataId: person.id, isNullable: true });
+      const wanted = specs.find((f) => f.name === name)!;
+      await this.request("POST", "/metadata/fields", { ...wanted, objectMetadataId: target.id, isNullable: true });
       result.created.push(name);
     }
     return result;
@@ -489,11 +525,80 @@ export class CrmClient implements CrmPort {
    */
   async updateOpportunity(
     opportunityId: string,
-    patch: { stage?: string; ownerId?: string | null; name?: string },
+    patch: { stage?: string; ownerId?: string | null; name?: string } & LeadFields,
   ): Promise<CrmOpportunityRef> {
-    const res = await this.request("PATCH", `/opportunities/${opportunityId}`, definedOnly(patch));
+    const body = toOpportunityBody(patch);
+    const res = await this.request("PATCH", `/opportunities/${opportunityId}`, body);
     const raw = unwrap(res, "updateOpportunity", "opportunity");
-    return this.toOpportunityRef({ ...raw, ...definedOnly(patch), id: raw?.id ?? opportunityId });
+    return this.toOpportunityRef({ ...raw, ...body, id: raw?.id ?? opportunityId });
+  }
+
+  /** Record the finer step an app works inside the stage (job applications: Applied, InMail sent, ...). */
+  async setStep(opportunityId: string, step: LeadStep | null): Promise<CrmOpportunityRef> {
+    return this.updateOpportunity(opportunityId, { step });
+  }
+
+  /**
+   * Close a lead: stage Closed, its outcome, the hours spent scoping and the close
+   * date (now unless given). `scopingHours` may be left out when nobody logged them;
+   * the record then shows it missing rather than a made-up zero.
+   */
+  async close(
+    opportunityId: string,
+    input: { outcome: LeadOutcome; scopingHours?: number; closeDate?: string },
+  ): Promise<CrmOpportunityRef> {
+    return this.updateOpportunity(opportunityId, {
+      stage: LEAD_STAGES.CLOSED,
+      outcome: input.outcome,
+      scopingHours: input.scopingHours,
+      closeDate: input.closeDate ?? new Date().toISOString(),
+    });
+  }
+
+  // --- Brands: one record per brand, seeded from the brand roster by key -----
+
+  /** Every brand record, read fresh. */
+  async listBrands(): Promise<CrmBrandRef[]> {
+    const res = await this.request("GET", "/brands?limit=200");
+    const list = unwrap(res, "brands");
+    return (Array.isArray(list) ? list : []).filter((b) => b?.id).map(toBrandRef);
+  }
+
+  /**
+   * Create the brand with this `key`, or update the one that has it. Only the
+   * fields given are written on an update, so a seed that knows a brand's name but
+   * not its owner never clears the owner set by hand.
+   */
+  async upsertBrand(input: {
+    key: string;
+    name: string;
+    shortTag?: string | null;
+    ownerId?: string | null;
+    vaultNote?: string | null;
+    goal?: string | null;
+  }): Promise<CrmBrandRef> {
+    const key = input.key.trim();
+    if (!key) throw new Error("crm brand: key is required");
+    const filter = `key[eq]:"${key}"`;
+    const found = unwrap(await this.request("GET", `/brands?filter=${encodeURIComponent(filter)}&limit=2`), "brands");
+    const existing = (Array.isArray(found) ? found : []).find((b) => b?.key === key);
+    const body: Record<string, unknown> = definedOnly({
+      key,
+      name: input.name,
+      shortTag: input.shortTag,
+      ownerId: input.ownerId,
+      goal: input.goal,
+    });
+    if (input.vaultNote !== undefined) body.vaultNote = toLinks(input.vaultNote === null ? [] : [input.vaultNote]);
+    if (existing?.id) {
+      const res = await this.request("PATCH", `/brands/${existing.id}`, body);
+      const raw = unwrap(res, "updateBrand", "brand");
+      return toBrandRef({ ...existing, ...raw, ...body, id: existing.id });
+    }
+    const res = await this.request("POST", "/brands", body);
+    const raw = unwrap(res, "createBrand", "brand");
+    if (!raw?.id) throw new Error("crm brand create returned no id");
+    return toBrandRef({ ...raw, ...body });
   }
 
   async deleteOpportunity(opportunityId: string): Promise<void> {
@@ -513,17 +618,16 @@ export class CrmClient implements CrmPort {
     return this.toCompanyRef({ ...raw, id: raw?.id ?? companyId });
   }
 
-  async createOpportunity(input: {
-    name: string;
-    stage?: string;
-    companyId: string;
-  }): Promise<CrmOpportunityRef> {
-    const body: Record<string, unknown> = { name: input.name, companyId: input.companyId };
-    if (input.stage) body.stage = input.stage;
+  async createOpportunity(
+    input: { name: string; stage?: string; companyId: string } & LeadFields,
+  ): Promise<CrmOpportunityRef> {
+    const { stage, ...rest } = input;
+    const body = toOpportunityBody(rest);
+    if (stage) body.stage = stage;
     const res = await this.request("POST", "/opportunities", body);
     const raw = unwrap(res, "createOpportunity", "opportunity");
     if (!raw?.id) throw new Error("crm opportunity create returned no id");
-    return this.toOpportunityRef({ ...raw, companyId: input.companyId, name: input.name, stage: input.stage ?? raw.stage });
+    return this.toOpportunityRef({ ...raw, ...body, stage: stage ?? raw.stage });
   }
 
   async listOpportunities(input: { companyId?: string; limit?: number } = {}): Promise<CrmOpportunityRef[]> {
@@ -535,13 +639,30 @@ export class CrmClient implements CrmPort {
   }
 
   private toOpportunityRef(raw: any): CrmOpportunityRef {
-    return {
+    const ref: CrmOpportunityRef = {
       id: String(raw?.id ?? ""),
       name: raw?.name ?? raw?.title ?? "",
       stage: raw?.stage ?? null,
       companyId: raw?.companyId ?? raw?.company?.id ?? null,
       opportunityUrl: this.opportunityUrl(String(raw?.id ?? "")),
     };
+    // The lead record fields, only where the record (or what we sent) carries them.
+    const lead: Partial<CrmOpportunityRef> = {
+      brandId: raw?.brandId ?? raw?.brand?.id,
+      ownerId: raw?.ownerId ?? raw?.owner?.id,
+      source: raw?.source,
+      sourceDetail: raw?.sourceDetail === undefined ? undefined : linkUrls(raw.sourceDetail)[0] ?? null,
+      market: raw?.market,
+      type: raw?.leadType,
+      step: raw?.step,
+      triageVerdict: raw?.triageVerdict,
+      passReason: raw?.passReason,
+      scopingHours: raw?.scopingHours,
+      outcome: raw?.outcome,
+      closeDate: raw?.closeDate,
+      links: raw?.leadLinks === undefined ? undefined : linkUrls(raw.leadLinks),
+    };
+    return { ...ref, ...definedOnly(lead) };
   }
 
   async updateTaskDueAt(taskId: string, dueAt: string): Promise<CrmTaskRef> {
@@ -590,4 +711,48 @@ export class CrmClient implements CrmPort {
 /** A PATCH body with the undefined keys dropped, so an absent field is never cleared. */
 function definedOnly<T extends Record<string, unknown>>(patch: T): Partial<T> {
   return Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) as Partial<T>;
+}
+
+/**
+ * The lead fields as Twenty's REST API takes them. Two API names differ from the
+ * client's: Twenty reserves `type` and `links` as field names, so the fields are
+ * `leadType` and `leadLinks`. Links are LINKS composites; `null` clears one (an empty
+ * composite, which Twenty accepts where it refuses a bare null).
+ */
+function toOpportunityBody(fields: LeadFields & { stage?: string; name?: string; companyId?: string }): Record<string, unknown> {
+  const { type, links, sourceDetail, ...rest } = fields;
+  const body: Record<string, unknown> = definedOnly(rest as Record<string, unknown>);
+  if (type !== undefined) body.leadType = type;
+  if (sourceDetail !== undefined) body.sourceDetail = toLinks(sourceDetail === null ? [] : [sourceDetail]);
+  if (links !== undefined) body.leadLinks = toLinks(links ?? []);
+  return body;
+}
+
+/** A Twenty LINKS composite: the first link is the primary, the rest secondary. */
+function toLinks(links: readonly LeadLink[]): Record<string, unknown> {
+  const [first, ...more] = links.map((l) => (typeof l === "string" ? { url: l, label: "" } : { url: l.url, label: l.label ?? "" }));
+  return {
+    primaryLinkUrl: first?.url ?? "",
+    primaryLinkLabel: first?.label ?? "",
+    secondaryLinks: more,
+  };
+}
+
+/** The URLs a LINKS composite holds, primary first; empty for an empty or absent one. */
+function linkUrls(raw: unknown): string[] {
+  const links = raw as { primaryLinkUrl?: string; secondaryLinks?: Array<{ url?: string }> | null } | null;
+  if (!links) return [];
+  return [links.primaryLinkUrl ?? "", ...(links.secondaryLinks ?? []).map((l) => l?.url ?? "")].filter(Boolean);
+}
+
+function toBrandRef(raw: any): CrmBrandRef {
+  return {
+    id: String(raw?.id ?? ""),
+    key: raw?.key ?? "",
+    name: raw?.name ?? "",
+    shortTag: raw?.shortTag ?? null,
+    ownerId: raw?.ownerId ?? raw?.owner?.id ?? null,
+    vaultNote: linkUrls(raw?.vaultNote)[0] ?? null,
+    goal: raw?.goal ?? null,
+  };
 }

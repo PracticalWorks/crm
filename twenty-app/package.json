@@ -1,0 +1,25 @@
+{
+  "name": "@practicalworks/crm-twenty-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The lead record declared as code: a Twenty App with the Brand object, the lead fields on Opportunity and the pipeline views.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "^24.5.0 || ^26.5.1",
+    "twenty": ">=2.57.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "plan": "twenty app plan --no-prune",
+    "stage-options": "node scripts/stage-options.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.2",
+    "twenty-sdk": "2.57.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.0"
+  },
+  "dependencies": {}
+}

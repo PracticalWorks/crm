@@ -56,12 +56,42 @@ export const CrmTaskRef = z.object({
 });
 export type CrmTaskRef = z.infer<typeof CrmTaskRef>;
 
-/** A sales opportunity attached directly to a company. */
+/**
+ * A lead: one opportunity per lead, bid, job application or inquiry. The lead
+ * record fields are optional on the ref: a read of an older record, or a create
+ * that set none of them, simply leaves them out. Values are the workspace's own
+ * (see `lead-record.ts`), passed through as strings.
+ */
 export const CrmOpportunityRef = z.object({
   id: z.string().min(1),
   name: z.string(),
   stage: z.string().nullable(),
   companyId: z.string().nullable(),
   opportunityUrl: z.string().min(1),
+  brandId: z.string().nullable().optional(),
+  ownerId: z.string().nullable().optional(),
+  source: z.string().nullable().optional(),
+  sourceDetail: z.string().nullable().optional(),
+  market: z.string().nullable().optional(),
+  type: z.string().nullable().optional(),
+  step: z.string().nullable().optional(),
+  triageVerdict: z.string().nullable().optional(),
+  passReason: z.string().nullable().optional(),
+  scopingHours: z.number().nullable().optional(),
+  outcome: z.string().nullable().optional(),
+  closeDate: z.string().nullable().optional(),
+  links: z.array(z.string()).optional(),
 });
 export type CrmOpportunityRef = z.infer<typeof CrmOpportunityRef>;
+
+/** A brand we run leads for, as the CRM holds it. Seeded from the brand roster by `key`. */
+export const CrmBrandRef = z.object({
+  id: z.string().min(1),
+  key: z.string().min(1),
+  name: z.string(),
+  shortTag: z.string().nullable(),
+  ownerId: z.string().nullable(),
+  vaultNote: z.string().nullable(),
+  goal: z.string().nullable(),
+});
+export type CrmBrandRef = z.infer<typeof CrmBrandRef>;
