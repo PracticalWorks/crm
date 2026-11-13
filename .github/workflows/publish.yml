@@ -1,0 +1,41 @@
+name: publish
+
+# Publishes @practicalworks/crm to public npm when main carries a version npm does
+# not have yet. NO credential here: npm trusted publishing checks this workflow's
+# OIDC token against the trusted publisher configured on the package and issues a
+# short-lived credential. `npm publish`, not `pnpm publish` (pnpm's OIDC support
+# is incomplete); no NODE_AUTH_TOKEN in the environment, even empty, or npm uses it
+# instead of falling back to OIDC.
+on:
+  push:
+    branches: [main]
+    paths: ["packages/client/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g npm@latest && npm --version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm guard
+      - run: pnpm build && pnpm test
+      - name: Publish if this version is new
+        working-directory: packages/client
+        run: |
+          name=$(node -p 'require("./package.json").name')
+          version=$(node -p 'require("./package.json").version')
+          if npm view "$name@$version" version --registry https://registry.npmjs.org/ >/dev/null 2>&1; then
+            echo "SKIP: $name@$version is already on npm"
+            exit 0
+          fi
+          npm publish --access public --provenance --registry https://registry.npmjs.org/

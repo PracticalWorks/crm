@@ -1,0 +1,27 @@
+name: ci
+
+# Local checks until the shared workflows in PracticalWorks/.github exist; this
+# file then calls them instead. Public repo: hosted runners are free here.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm guard
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test

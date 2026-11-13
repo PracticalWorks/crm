@@ -1,0 +1,12 @@
+{
+  "name": "crm-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "guard": "node --test scripts/guard.test.mjs && node scripts/guard.mjs"
+  }
+}
