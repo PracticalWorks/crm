@@ -43,7 +43,12 @@ export const CrmTaskRef = z.object({
   title: z.string(),
   /** ISO timestamp the commitment is due. */
   dueAt: z.string().nullable(),
-  companyId: z.string().nullable(),
+  /**
+   * The client the task is linked to; null when it has none. Absent when the link
+   * could not be read (an update whose taskTarget lookup failed), so an unknown is
+   * never reported as unlinked.
+   */
+  companyId: z.string().nullable().optional(),
   /**
    * The task status exactly as the instance reports it (commonly TODO /
    * IN_PROGRESS / DONE). An open string, not an enum: the set is
