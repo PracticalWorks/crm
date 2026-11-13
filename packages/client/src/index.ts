@@ -16,6 +16,8 @@ export {
   LEAD_STAGES,
   LEAD_STEPS,
   LEAD_TYPES,
+  OUTREACH_PERSON_FIELDS,
+  OUTREACH_STATES,
   TRIAGE_VERDICTS,
   type LeadLink,
   type LeadMarket,
@@ -25,6 +27,9 @@ export {
   type LeadStageName,
   type LeadStep,
   type LeadType,
+  type OutreachPersonFieldName,
+  type OutreachState,
+  type OutreachStatus,
   type TriageVerdict,
 } from "./lead-record.js";
 export { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef } from "./schemas.js";

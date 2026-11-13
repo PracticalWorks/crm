@@ -271,3 +271,18 @@ describe("CrmClient.ensureFields", () => {
     expect(calls.filter((c) => c.method === "POST")).toHaveLength(0);
   });
 });
+
+describe("OUTREACH_PERSON_FIELDS", () => {
+  it("are the four fields frontdesk writes, each a shape ensureFields can check", async () => {
+    const { OUTREACH_PERSON_FIELDS, OUTREACH_STATES } = await import("./index.js");
+    expect(OUTREACH_PERSON_FIELDS.map((f) => `${f.name}:${f.type}`)).toEqual([
+      "outreachSequence:TEXT",
+      "outreachStep:NUMBER",
+      "outreachLastSentAt:DATE_TIME",
+      "outreachState:SELECT",
+    ]);
+    const stateField = OUTREACH_PERSON_FIELDS.find((f) => f.name === "outreachState") as { options?: readonly { value: string }[] };
+    expect(stateField.options?.map((o) => o.value)).toEqual(["ACTIVE", "REPLIED", "OPTED_OUT", "BOUNCED", "FINISHED"]);
+    expect(OUTREACH_STATES.every((o) => /^[A-Z_]+$/.test(o.value))).toBe(true);
+  });
+});
