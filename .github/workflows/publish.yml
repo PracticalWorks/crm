@@ -21,12 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: PracticalWorks/.github/.github/actions/setup@v1
         with:
-          node-version: 22
+          pnpm-version: "10.14.0"
+          node-version: "22"
       - run: npm install -g npm@latest && npm --version
-      - run: pnpm install --frozen-lockfile
       - run: pnpm guard
       - run: pnpm build && pnpm test
       - name: Publish if this version is new
