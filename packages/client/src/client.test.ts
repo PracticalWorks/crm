@@ -399,6 +399,38 @@ describe("CrmClient tasks — the durable half of anything scheduled", () => {
     expect(ref.id).toBe("task1");
   });
 
+  // A moved task reported `companyId: null` even while still linked, so a
+  // reader concluded the client link had been dropped. The link lives on a taskTarget
+  // row, so the move reads it back from there.
+  describe("reports a moved task's real client link", () => {
+    const routes = (targets: unknown[]) => (url: string, method?: string) =>
+      method === "PATCH" ? { data: { updateTask: { id: "task1", title: "T" } } } : { data: { taskTargets: targets } };
+
+    it("reads the company off the task's taskTarget after the patch", async () => {
+      const calls: Call[] = [];
+      const client = new CrmClient(CONFIG, makeFetch(calls, routes([{ id: "tt1", taskId: "task1", companyId: "comp_1" }])));
+      const ref = await client.updateTaskDueAt("task1", "2026-08-20T09:00:00-04:00");
+      expect(ref.companyId).toBe("comp_1");
+      expect(calls).toHaveLength(2);
+      expect(calls[1]).toMatchObject({ method: "GET", url: "https://twenty.test/rest/taskTargets?filter=taskId[eq]:task1&limit=5" });
+    });
+
+    it("reports null for a task that genuinely has no client", async () => {
+      const client = new CrmClient(CONFIG, makeFetch([], routes([{ id: "tt1", taskId: "task1", companyId: null, personId: "p1" }])));
+      expect((await client.updateTaskStatus("task1", "DONE")).companyId).toBeNull();
+    });
+
+    it("omits companyId, rather than asserting none, when the lookup fails, and the move still succeeds", async () => {
+      const failingLookup = (async (url: string, init?: any) =>
+        init?.method === "PATCH"
+          ? { ok: true, status: 200, json: async () => ({ data: { id: "task1" } }) }
+          : { ok: false, status: 503, text: async () => "down", json: async () => ({}) }) as unknown as typeof fetch;
+      const ref = await new CrmClient(CONFIG, failingLookup).updateTaskDueAt("task1", "2026-08-20T09:00:00-04:00");
+      expect(ref.dueAt).toBe("2026-08-20T09:00:00-04:00");
+      expect("companyId" in ref).toBe(false);
+    });
+  });
+
   it("patches only the task fields given, assignee included", async () => {
     const calls: Call[] = [];
     const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "task1", title: "T", status: "TODO" } })));

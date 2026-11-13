@@ -564,8 +564,33 @@ export class CrmClient implements CrmPort {
   ): Promise<CrmTaskRef> {
     const updated = await this.request("PATCH", `/tasks/${taskId}`, definedOnly(patch));
     const raw = unwrap(updated, "updateTask", "task");
-    const ref = this.toTaskRef({ ...raw, id: raw?.id ?? taskId }, null);
-    return { ...ref, ...(patch.status !== undefined && { status: patch.status }), ...(patch.dueAt !== undefined && { dueAt: patch.dueAt }) };
+    const { companyId: _notOnTheTask, ...ref } = this.toTaskRef({ ...raw, id: raw?.id ?? taskId }, null);
+    const companyId = await this.taskCompanyId(taskId);
+    return {
+      ...ref,
+      ...(companyId !== undefined && { companyId }),
+      ...(patch.status !== undefined && { status: patch.status }),
+      ...(patch.dueAt !== undefined && { dueAt: patch.dueAt }),
+    };
+  }
+
+  /**
+   * The client a task is linked to, read off its taskTarget rows: a task holds no
+   * company of its own, so the patch echo cannot say. Null when the task has no
+   * client; undefined when the read failed or came back unrecognisable, so the
+   * caller omits the field rather than reporting a link gone that we simply could
+   * not see. Never throws: the patch it follows has already landed.
+   */
+  private async taskCompanyId(taskId: string): Promise<string | null | undefined> {
+    try {
+      const res = await this.request("GET", `/taskTargets?filter=taskId[eq]:${encodeURIComponent(taskId)}&limit=5`);
+      const rows = unwrap(res, "taskTargets");
+      if (!Array.isArray(rows)) return undefined;
+      const linked = rows.find((row) => typeof row?.companyId === "string" && row.companyId.length > 0);
+      return linked ? String(linked.companyId) : null;
+    } catch {
+      return undefined;
+    }
   }
 
   /** Shape a raw Twenty task record into the ref callers get. `companyId` is
