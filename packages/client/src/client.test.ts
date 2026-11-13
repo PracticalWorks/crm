@@ -415,6 +415,14 @@ describe("CrmClient tasks — the durable half of anything scheduled", () => {
     expect(calls[0].body).toEqual({ assigneeId: null });
   });
 
+  it("clears a due date with null, and reports it cleared", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "task1", dueAt: "2026-09-01T00:00:00Z" } })));
+    const ref = await client.updateTask("task1", { dueAt: null });
+    expect(calls[0].body).toEqual({ dueAt: null });
+    expect(ref.dueAt).toBeNull();
+  });
+
   it("patches an opportunity's owner and deletes one by id", async () => {
     const calls: Call[] = [];
     const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "opp1", name: "Lead", stage: "NEW" } })));

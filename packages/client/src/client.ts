@@ -483,7 +483,10 @@ export class CrmClient implements CrmPort {
     return this.updateOpportunity(opportunityId, { stage });
   }
 
-  /** Patch an opportunity: only the fields given are sent, and what we sent wins over the echo. */
+  /**
+   * Patch an opportunity: only the fields given are sent, and what we sent wins over the echo.
+   * `null` clears the owner; `stage` and `name` are always values.
+   */
   async updateOpportunity(
     opportunityId: string,
     patch: { stage?: string; ownerId?: string | null; name?: string },
@@ -497,7 +500,10 @@ export class CrmClient implements CrmPort {
     await this.request("DELETE", `/opportunities/${opportunityId}`);
   }
 
-  /** Patch a company. `relationshipType` is the workspace's own select value, passed through. */
+  /**
+   * Patch a company. `relationshipType` is the workspace's own select value, passed through.
+   * `null` clears either field.
+   */
   async updateCompany(
     companyId: string,
     patch: { relationshipType?: string | null; accountOwnerId?: string | null },
@@ -549,11 +555,12 @@ export class CrmClient implements CrmPort {
 
   /**
    * Patch a task: only the fields given are sent, and what we sent wins over the echo.
-   * `assigneeId` is a WorkspaceMember id (null unassigns), as on createTask.
+   * `assigneeId` is a WorkspaceMember id, as on createTask. `null` clears the fields that
+   * may be empty (assignee, due date); `status` is always a value.
    */
   async updateTask(
     taskId: string,
-    patch: { status?: string; dueAt?: string; assigneeId?: string | null },
+    patch: { status?: string; dueAt?: string | null; assigneeId?: string | null },
   ): Promise<CrmTaskRef> {
     const updated = await this.request("PATCH", `/tasks/${taskId}`, definedOnly(patch));
     const raw = unwrap(updated, "updateTask", "task");
