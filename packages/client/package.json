@@ -1,6 +1,6 @@
 {
   "name": "@practicalworks/crm",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "A typed client for the Twenty CRM's REST API: companies, people, notes, tasks and opportunities behind one port.",
   "license": "MIT",
   "type": "module",

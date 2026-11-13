@@ -1,4 +1,31 @@
-import type { CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef } from "./schemas.js";
+import type { LeadLink, LeadMarket, LeadOutcome, LeadSource, LeadStep, LeadType, TriageVerdict } from "./lead-record.js";
+import type { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef } from "./schemas.js";
+
+/**
+ * The lead record fields an opportunity carries (see `lead-record.ts` for the
+ * values). An absent field is never sent; `null` clears it.
+ */
+export interface LeadFields {
+  /** A Brand record id (see `listBrands` / `upsertBrand`). */
+  brandId?: string | null;
+  /** Who answers for the lead: a WorkspaceMember id. */
+  ownerId?: string | null;
+  source?: LeadSource | null;
+  /** The posting, card or lead the opportunity came from. */
+  sourceDetail?: LeadLink | null;
+  market?: LeadMarket | null;
+  type?: LeadType | null;
+  step?: LeadStep | null;
+  triageVerdict?: TriageVerdict | null;
+  passReason?: string | null;
+  /** Hours spent scoping, logged at close. */
+  scopingHours?: number | null;
+  outcome?: LeadOutcome | null;
+  /** ISO timestamp. */
+  closeDate?: string | null;
+  /** Live pages in the app that owns the lead: posting, app page, documents. */
+  links?: LeadLink[] | null;
+}
 
 /**
  * The relationship side of a client: the CRM (Twenty) holds who a client is and
@@ -58,15 +85,15 @@ export interface CrmPort {
   /** The deep-link a teammate opens to see a task. */
   taskUrl(taskId: string): string;
   /** Create an opportunity directly against a company. */
-  createOpportunity(input: { name: string; stage?: string; companyId: string }): Promise<CrmOpportunityRef>;
+  createOpportunity(input: { name: string; stage?: string; companyId: string } & LeadFields): Promise<CrmOpportunityRef>;
   /** Read opportunities, optionally limited to a company. */
   listOpportunities(input?: { companyId?: string; limit?: number }): Promise<CrmOpportunityRef[]>;
   /** Move an opportunity between stages. */
   updateOpportunityStage(opportunityId: string, stage: string): Promise<CrmOpportunityRef>;
-  /** Patch an opportunity's stage, owner (a WorkspaceMember id; `null` clears it) or name. */
+  /** Patch an opportunity's stage, name, owner (a WorkspaceMember id) or any lead field; `null` clears a field. */
   updateOpportunity(
     opportunityId: string,
-    patch: { stage?: string; ownerId?: string | null; name?: string },
+    patch: { stage?: string; ownerId?: string | null; name?: string } & LeadFields,
   ): Promise<CrmOpportunityRef>;
   /** Remove an opportunity that is not a lead (blank, duplicate). */
   deleteOpportunity(opportunityId: string): Promise<void>;
@@ -77,4 +104,27 @@ export interface CrmPort {
   ): Promise<CrmCompanyRef>;
   /** The deep-link a teammate opens to see an opportunity. */
   opportunityUrl(opportunityId: string): string;
+}
+
+/**
+ * The lead record beyond plain opportunities: steps, closing and brands. Kept apart
+ * from `CrmPort` so the existing implementers of that port keep compiling; the
+ * client implements both.
+ */
+export interface LeadRecordPort {
+  /** Record the finer step inside the stage. */
+  setStep(opportunityId: string, step: LeadStep | null): Promise<CrmOpportunityRef>;
+  /** Stage Closed, with the outcome, the scoping hours and the close date (now unless given). */
+  close(opportunityId: string, input: { outcome: LeadOutcome; scopingHours?: number; closeDate?: string }): Promise<CrmOpportunityRef>;
+  /** Every brand record. */
+  listBrands(): Promise<CrmBrandRef[]>;
+  /** Create the brand with this key, or update the given fields of the one that has it. */
+  upsertBrand(input: {
+    key: string;
+    name: string;
+    shortTag?: string | null;
+    ownerId?: string | null;
+    vaultNote?: string | null;
+    goal?: string | null;
+  }): Promise<CrmBrandRef>;
 }

@@ -1,0 +1,82 @@
+name: twenty-app
+
+# The lead record app. On a pull request it builds the app and, when credentials are
+# available, asks the workspace for the plan: what an apply WOULD change, with
+# `--no-prune` so nothing the app does not declare is ever proposed for deletion.
+# Planning is read-only on the server: no registration, upload or sync.
+#
+# Apply is a manual dispatch only, and stays off until the repository variable
+# TWENTY_APP_APPLY_ENABLED is "true" and the dispatch is confirmed by typing "apply".
+#
+# Configuration, never secrets in this file: the workspace URL is the repository
+# variable TWENTY_API_URL; the API key arrives as TWENTY_API_KEY at run time.
+on:
+  pull_request:
+    paths:
+      - "twenty-app/**"
+      - "packages/client/src/lead-record.ts"
+      - ".github/workflows/twenty-app.yml"
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "apply" to change the workspace (stage options, then the app, never pruning)'
+        required: true
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  TWENTY_CLI_VERSION: 2.57.0
+
+jobs:
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: npm install -g twenty@${{ env.TWENTY_CLI_VERSION }}
+      - name: Build the app (no workspace needed)
+        run: twenty app build --path twenty-app
+      - name: Plan against the workspace
+        env:
+          TWENTY_API_URL: ${{ vars.TWENTY_API_URL }}
+          TWENTY_API_KEY: ${{ secrets.TWENTY_API_KEY }}
+        run: |
+          if [ -z "$TWENTY_API_URL" ] || [ -z "$TWENTY_API_KEY" ]; then
+            echo "::notice::No workspace credentials in this run; plan skipped (build only)."
+            exit 0
+          fi
+          node twenty-app/scripts/stage-options.ts
+          twenty app plan --path twenty-app --no-prune
+
+  apply:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.confirm == 'apply' &&
+      vars.TWENTY_APP_APPLY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: twenty-prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm guard && pnpm -r typecheck && pnpm -r test
+      - run: npm install -g twenty@${{ env.TWENTY_CLI_VERSION }}
+      - name: Stage options, then the app
+        env:
+          TWENTY_API_URL: ${{ vars.TWENTY_API_URL }}
+          TWENTY_API_KEY: ${{ secrets.TWENTY_API_KEY }}
+        run: |
+          node twenty-app/scripts/stage-options.ts --apply
+          twenty app apply --path twenty-app --create --no-prune --no-input
