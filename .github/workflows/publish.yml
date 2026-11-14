@@ -1,20 +1,28 @@
 name: publish
 
-# Publishes @practicalworks/crm to public npm when main carries a version npm does
-# not have yet. NO credential here: npm trusted publishing checks this workflow's
-# OIDC token against the trusted publisher configured on the package and issues a
+# Publishes @practicalworks/crm to public npm, and the same version to GitHub
+# Packages, whenever main carries a version a registry does not have yet.
+#
+# npm: NO credential here. npm trusted publishing checks this workflow's OIDC
+# token against the trusted publisher configured on the package and issues a
 # short-lived credential. `npm publish`, not `pnpm publish` (pnpm's OIDC support
-# is incomplete); no NODE_AUTH_TOKEN in the environment, even empty, or npm uses it
-# instead of falling back to OIDC.
+# is incomplete); no NODE_AUTH_TOKEN in that step's environment, even empty, or
+# npm uses it instead of falling back to OIDC.
+#
+# GitHub Packages: consumers that map the whole @practicalworks scope there
+# (frontdesk's .npmrc) resolve it there, and `mastra build` reinstalls bundled
+# dependencies by version inside .mastra/output, so a tarball-URL pin to npm
+# does not survive it. Without this copy their image build 404s.
 on:
   push:
     branches: [main]
-    paths: ["packages/client/**"]
+    paths: ["packages/client/**", ".github/workflows/publish.yml"]
   workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
+  packages: write
 
 jobs:
   publish:
@@ -39,3 +47,21 @@ jobs:
             exit 0
           fi
           npm publish --access public --provenance --registry https://registry.npmjs.org/
+      # GitHub Packages, with this job's own GITHUB_TOKEN, set on THIS step only
+      # (see the npm note above). The package inherits this public repo's
+      # visibility. The userconfig names the variable, never its value.
+      - name: Publish to GitHub Packages if this version is new there
+        working-directory: packages/client
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          name=$(node -p 'require("./package.json").name')
+          version=$(node -p 'require("./package.json").version')
+          cfg="$RUNNER_TEMP/github-packages.npmrc"
+          echo '@practicalworks:registry=https://npm.pkg.github.com' > "$cfg"
+          echo '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}' >> "$cfg"
+          if npm view "$name@$version" version --userconfig "$cfg" >/dev/null 2>&1; then
+            echo "SKIP: $name@$version is already on GitHub Packages"
+            exit 0
+          fi
+          npm publish --userconfig "$cfg" --registry https://npm.pkg.github.com
