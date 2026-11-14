@@ -118,3 +118,61 @@ export const LEAD_STAGE_LABELS: Readonly<Record<LeadStageName, string>> = {
 
 /** A link as a writer gives it: a bare URL, or a URL with the label to show. */
 export type LeadLink = string | { url: string; label?: string };
+
+// ─── Outreach status on People ───
+// Frontdesk's cold-outreach sequences show where each emailed contact is on their
+// Person: visibility only, nothing in Twenty decides a send. The Twenty App declares
+// these four fields from OUTREACH_PERSON_FIELDS; frontdesk writes them with
+// `updatePerson` and checks they exist with `ensureFields(..., { apply: false })`.
+
+/** Where a contact is in their outreach sequence. */
+export const OUTREACH_STATES = options([
+  { value: "ACTIVE", label: "Active" },
+  { value: "REPLIED", label: "Replied" },
+  { value: "OPTED_OUT", label: "Opted out" },
+  { value: "BOUNCED", label: "Bounced" },
+  { value: "FINISHED", label: "Finished" },
+]);
+export type OutreachState = (typeof OUTREACH_STATES)[number]["value"];
+
+/** The Person fields the outreach status lives in, in the shape `ensureFields` checks. */
+export const OUTREACH_PERSON_FIELDS = [
+  {
+    name: "outreachSequence",
+    type: "TEXT",
+    label: "Outreach sequence",
+    description: "The frontdesk outreach sequence this person is in. Written by frontdesk; read only.",
+    icon: "IconMailForward",
+  },
+  {
+    name: "outreachStep",
+    type: "NUMBER",
+    label: "Outreach step",
+    description: "The sequence step this person is on. Written by frontdesk; read only.",
+    icon: "IconListNumbers",
+  },
+  {
+    name: "outreachLastSentAt",
+    type: "DATE_TIME",
+    label: "Outreach last sent",
+    description: "When the newest outreach email went to this person. Written by frontdesk; read only.",
+    icon: "IconSend",
+  },
+  {
+    name: "outreachState",
+    type: "SELECT",
+    label: "Outreach state",
+    description: "Where this person is in their outreach sequence. Written by frontdesk; read only.",
+    icon: "IconProgress",
+    options: OUTREACH_STATES,
+  },
+] as const;
+export type OutreachPersonFieldName = (typeof OUTREACH_PERSON_FIELDS)[number]["name"];
+
+/** What a Person carries once frontdesk has written its outreach status. */
+export interface OutreachStatus {
+  outreachSequence: string;
+  outreachStep: number;
+  outreachLastSentAt: string | null;
+  outreachState: OutreachState;
+}

@@ -33,6 +33,14 @@ export const OPPORTUNITY_FIELDS = {
   leadLinks: 'b5c9d170-9851-4494-8705-d476cfc75980',
 } as const;
 
+/** Fields this app adds to the standard Person object: frontdesk's outreach status. */
+export const PERSON_OUTREACH_FIELDS = {
+  outreachSequence: '25f41e3b-39b2-436c-80d5-e20a7711620e',
+  outreachStep: 'b28d657f-2ab0-4bd9-9e23-2629d312b01b',
+  outreachLastSentAt: 'c1de83e4-d957-452e-ba11-06a57d8f85d6',
+  outreachState: '4bba7ecb-388f-4471-80d2-63ef6a7e5b8a',
+} as const;
+
 export const VIEWS = {
   pipeline: 'ad0c843f-3f50-4814-bd70-cb4074d99531',
   byBrand: '7e6ee6f4-1851-4fd3-b7d4-bb69a13977d7',
@@ -41,4 +49,5 @@ export const VIEWS = {
   typeJobApplication: 'c34f974e-880a-4e01-b204-4eb10bc1e5a1',
   typeProductSignup: '3fb9cc7d-3828-4bfd-93d5-717f8778b8e0',
   typePartner: '6c890cb4-098c-4cf9-953f-e97c22887e04',
+  outreach: '36470b11-0ef5-4078-8a3d-87846a8fa3db',
 } as const;
