@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+const provenancePredicateType = 'https://slsa.dev/provenance/v1';
+
+function decodeDssePayload(payload) {
+  try {
+    return JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyNpmProvenance(packageName, version, registry = 'https://registry.npmjs.org') {
   const encodedPackage = encodeURIComponent(packageName);
   const url = `${registry.replace(/\/$/, '')}/-/npm/v1/attestations/${encodedPackage}@${encodeURIComponent(version)}`;
@@ -17,11 +27,17 @@ export async function verifyNpmProvenance(packageName, version, registry = 'http
     throw new Error('registry returned invalid JSON');
   }
 
-  if (!attestations.provenance?.predicateType) {
+  const provenance = attestations.attestations?.find(
+    (attestation) => attestation.predicateType === provenancePredicateType,
+  );
+  const payload = provenance?.bundle?.dsseEnvelope?.payload;
+  const statement = typeof payload === 'string' ? decodeDssePayload(payload) : null;
+
+  if (statement?.predicateType !== provenancePredicateType) {
     throw new Error('registry returned no provenance attestation');
   }
 
-  return attestations.provenance.predicateType;
+  return statement.predicateType;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
