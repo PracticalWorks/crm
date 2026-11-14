@@ -16,6 +16,6 @@ pnpm guard && pnpm build && pnpm typecheck && pnpm test
 
 The app is planned on every pull request (`.github/workflows/twenty-app.yml`) and applied only by a confirmed manual dispatch: stage options first, then `twenty app apply --no-prune`. Locally, with `TWENTY_API_URL` and `TWENTY_API_KEY` set and Node 24: `node twenty-app/scripts/stage-options.ts` (dry run) and `twenty app plan --path twenty-app --no-prune`.
 
-Releases: bump `packages/client/package.json` `version`; merging to `main` publishes it to npm with provenance (`.github/workflows/publish.yml`).
+Releases: bump `packages/client/package.json` `version`; merging to `main` publishes it to npm with provenance and verifies the registry attestation before the job succeeds (`.github/workflows/publish.yml`). Check a specific release locally with `pnpm verify:npm-provenance` (the command intentionally fails for releases without a live registry attestation).
 
 MIT licensed.
