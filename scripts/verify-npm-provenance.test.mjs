@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { verifyNpmProvenance } from './verify-npm-provenance.mjs';
+import { verifyNpmProvenance, waitForNpmProvenance } from './verify-npm-provenance.mjs';
 
 const response = (status, body) => ({
   ok: status >= 200 && status < 300,
@@ -74,4 +74,37 @@ test('rejects an attestation whose DSSE payload is not SLSA provenance', async (
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+const withFetch = async (responses, run) => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => responses[Math.min(calls++, responses.length - 1)];
+  try {
+    return await run(() => calls);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+};
+const noSleep = { delayMs: 1, sleep: async () => {} };
+
+test('waits through the 404s npm serves right after a publish, then verifies', async () => {
+  await withFetch([response(404, '{}'), response(404, '{}'), response(200, npmAttestationsResponse())], async (calls) => {
+    assert.equal(await waitForNpmProvenance('@practicalworks/crm', '0.13.0', { ...noSleep, attempts: 5 }), 'https://slsa.dev/provenance/v1');
+    assert.equal(calls(), 3);
+  });
+});
+
+test('gives up after its attempts when the attestation never appears', async () => {
+  await withFetch([response(404, '{}')], async (calls) => {
+    await assert.rejects(waitForNpmProvenance('@practicalworks/crm', '0.9.0', { ...noSleep, attempts: 3 }), /HTTP 404/);
+    assert.equal(calls(), 3);
+  });
+});
+
+test('does not wait on an answer that is not a delay: no provenance fails at once', async () => {
+  await withFetch([response(200, '{}')], async (calls) => {
+    await assert.rejects(waitForNpmProvenance('@practicalworks/crm', '0.13.0', { ...noSleep, attempts: 5 }), /no provenance attestation/);
+    assert.equal(calls(), 1);
+  });
 });

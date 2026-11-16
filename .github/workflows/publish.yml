@@ -46,12 +46,6 @@ jobs:
             exit 0
           fi
           npm publish --access public --provenance --registry https://registry.npmjs.org/
-      - name: Verify npm provenance
-        working-directory: packages/client
-        run: |
-          name=$(node -p 'require("./package.json").name')
-          version=$(node -p 'require("./package.json").version')
-          node ../../scripts/verify-npm-provenance.mjs "$name" "$version"
       # GitHub Packages, with this job's own GITHUB_TOKEN, set on THIS step only
       # (see the npm note above). The package inherits this public repo's
       # visibility. The userconfig names the variable, never its value.
@@ -70,3 +64,11 @@ jobs:
             exit 0
           fi
           npm publish --userconfig "$cfg" --registry https://npm.pkg.github.com
+      # Last, so a slow or failed check never skips the GitHub Packages copy above.
+      # It waits through the minute or so npm takes to serve a fresh version.
+      - name: Verify npm provenance
+        working-directory: packages/client
+        run: |
+          name=$(node -p 'require("./package.json").name')
+          version=$(node -p 'require("./package.json").version')
+          node ../../scripts/verify-npm-provenance.mjs "$name" "$version"
