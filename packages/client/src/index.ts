@@ -2,9 +2,34 @@ export {
   CrmClient,
   PERSON_LANES,
   type CrmConfig,
+  type FieldSpec,
   type PersonFieldsResult,
   type PersonLane,
   type PersonMatch,
 } from "./client.js";
-export type { CrmPort } from "./port.js";
-export { CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef } from "./schemas.js";
+export type { CrmPort, LeadFields, LeadRecordPort } from "./port.js";
+export {
+  LEAD_MARKETS,
+  LEAD_OUTCOMES,
+  LEAD_SOURCES,
+  LEAD_STAGE_LABELS,
+  LEAD_STAGES,
+  LEAD_STEPS,
+  LEAD_TYPES,
+  OUTREACH_PERSON_FIELDS,
+  OUTREACH_STATES,
+  TRIAGE_VERDICTS,
+  type LeadLink,
+  type LeadMarket,
+  type LeadOutcome,
+  type LeadSource,
+  type LeadStage,
+  type LeadStageName,
+  type LeadStep,
+  type LeadType,
+  type OutreachPersonFieldName,
+  type OutreachState,
+  type OutreachStatus,
+  type TriageVerdict,
+} from "./lead-record.js";
+export { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef } from "./schemas.js";

@@ -399,6 +399,88 @@ describe("CrmClient tasks — the durable half of anything scheduled", () => {
     expect(ref.id).toBe("task1");
   });
 
+  // A moved task reported `companyId: null` even while still linked, so a
+  // reader concluded the client link had been dropped. The link lives on a taskTarget
+  // row, so the move reads it back from there.
+  describe("reports a moved task's real client link", () => {
+    const routes = (targets: unknown[]) => (url: string, method?: string) =>
+      method === "PATCH" ? { data: { updateTask: { id: "task1", title: "T" } } } : { data: { taskTargets: targets } };
+
+    it("reads the company off the task's taskTarget after the patch", async () => {
+      const calls: Call[] = [];
+      const client = new CrmClient(CONFIG, makeFetch(calls, routes([{ id: "tt1", taskId: "task1", companyId: "comp_1" }])));
+      const ref = await client.updateTaskDueAt("task1", "2026-08-20T09:00:00-04:00");
+      expect(ref.companyId).toBe("comp_1");
+      expect(calls).toHaveLength(2);
+      expect(calls[1]).toMatchObject({ method: "GET", url: "https://twenty.test/rest/taskTargets?filter=taskId[eq]:task1&limit=5" });
+    });
+
+    it("reports null for a task that genuinely has no client", async () => {
+      const client = new CrmClient(CONFIG, makeFetch([], routes([{ id: "tt1", taskId: "task1", companyId: null, personId: "p1" }])));
+      expect((await client.updateTaskStatus("task1", "DONE")).companyId).toBeNull();
+    });
+
+    it("omits companyId, rather than asserting none, when the lookup fails, and the move still succeeds", async () => {
+      const failingLookup = (async (url: string, init?: any) =>
+        init?.method === "PATCH"
+          ? { ok: true, status: 200, json: async () => ({ data: { id: "task1" } }) }
+          : { ok: false, status: 503, text: async () => "down", json: async () => ({}) }) as unknown as typeof fetch;
+      const ref = await new CrmClient(CONFIG, failingLookup).updateTaskDueAt("task1", "2026-08-20T09:00:00-04:00");
+      expect(ref.dueAt).toBe("2026-08-20T09:00:00-04:00");
+      expect("companyId" in ref).toBe(false);
+    });
+  });
+
+  it("patches only the task fields given, assignee included", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "task1", title: "T", status: "TODO" } })));
+    const ref = await client.updateTask("task1", { assigneeId: "member_alan", status: "DONE" });
+    expect(calls[0]).toMatchObject({ url: "https://twenty.test/rest/tasks/task1", method: "PATCH" });
+    expect(calls[0].body).toEqual({ assigneeId: "member_alan", status: "DONE" });
+    expect(ref.status).toBe("DONE");
+  });
+
+  it("unassigns with null and never sends an absent field", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "task1" } })));
+    await client.updateTask("task1", { assigneeId: null, dueAt: undefined });
+    expect(calls[0].body).toEqual({ assigneeId: null });
+  });
+
+  it("clears a due date with null, and reports it cleared", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "task1", dueAt: "2026-09-01T00:00:00Z" } })));
+    const ref = await client.updateTask("task1", { dueAt: null });
+    expect(calls[0].body).toEqual({ dueAt: null });
+    expect(ref.dueAt).toBeNull();
+  });
+
+  it("patches an opportunity's owner and deletes one by id", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "opp1", name: "Lead", stage: "NEW" } })));
+    const ref = await client.updateOpportunity("opp1", { ownerId: "member_alan" });
+    expect(calls[0]).toMatchObject({ url: "https://twenty.test/rest/opportunities/opp1", method: "PATCH", body: { ownerId: "member_alan" } });
+    expect(ref.stage).toBe("NEW");
+    await client.deleteOpportunity("opp2");
+    expect(calls[1]).toMatchObject({ url: "https://twenty.test/rest/opportunities/opp2", method: "DELETE" });
+  });
+
+  it("still moves an opportunity's stage through the patch", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "opp1" } })));
+    const ref = await client.updateOpportunityStage("opp1", "MEETING");
+    expect(calls[0].body).toEqual({ stage: "MEETING" });
+    expect(ref.stage).toBe("MEETING");
+  });
+
+  it("patches a company's relationship type", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "comp_1", name: "Mary" } })));
+    const ref = await client.updateCompany("comp_1", { relationshipType: "CLIENT" });
+    expect(calls[0]).toMatchObject({ url: "https://twenty.test/rest/companies/comp_1", method: "PATCH", body: { relationshipType: "CLIENT" } });
+    expect(ref.id).toBe("comp_1");
+  });
+
   it("deletes a task by id", async () => {
     const calls: Call[] = [];
     const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: {} })));

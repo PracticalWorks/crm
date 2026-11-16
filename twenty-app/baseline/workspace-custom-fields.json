@@ -1,0 +1,96 @@
+{
+  "about": "Custom fields the workspace already holds, owned by the workspace's own custom application, captured read-only with `twenty app pull` and `twenty metadata field list` before this app's first apply. This app must never declare, change or delete any of them; src/__tests__/baseline.test.ts holds it to that. Option values are left out on purpose: they are workspace data.",
+  "capturedWith": "twenty 2.57.0 against a 2.57.1 server",
+  "fields": [
+    {
+      "object": "attachment",
+      "name": "author",
+      "type": "RELATION",
+      "universalIdentifier": "77c6f720-3bc3-4202-b2ff-77899adb768f"
+    },
+    {
+      "object": "company",
+      "name": "annualRecurringRevenue",
+      "type": "CURRENCY",
+      "universalIdentifier": "556decc2-b9d1-4449-9674-38f905b2143d"
+    },
+    {
+      "object": "company",
+      "name": "billing",
+      "type": "LINKS",
+      "universalIdentifier": "3bfa42c3-33f0-4023-bae9-2473bd6c3ac8"
+    },
+    {
+      "object": "company",
+      "name": "employees",
+      "type": "NUMBER",
+      "universalIdentifier": "41325117-dddf-4c9d-b48d-1118b7d72928"
+    },
+    {
+      "object": "company",
+      "name": "idealCustomerProfile",
+      "type": "BOOLEAN",
+      "universalIdentifier": "1c1376dd-e135-4e78-a612-bed74adc1802"
+    },
+    {
+      "object": "company",
+      "name": "relationshipType",
+      "type": "SELECT",
+      "universalIdentifier": "28ade173-c544-43f3-9069-5d979e212022"
+    },
+    {
+      "object": "company",
+      "name": "vendorCategory",
+      "type": "SELECT",
+      "universalIdentifier": "50e7b5cb-fd2e-421a-8067-3ca37f8e9eae"
+    },
+    {
+      "object": "company",
+      "name": "workspaceCustom",
+      "type": "MULTI_SELECT",
+      "universalIdentifier": "b272478a-e8ca-465b-b4bb-79d006c22491"
+    },
+    {
+      "object": "company",
+      "name": "xLink",
+      "type": "LINKS",
+      "universalIdentifier": "ab718933-0c1a-4887-ae79-bc1a0a612cab"
+    },
+    {
+      "object": "person",
+      "name": "city",
+      "type": "TEXT",
+      "universalIdentifier": "228af5ed-b715-4678-bbe2-06b95ab1a352"
+    },
+    {
+      "object": "person",
+      "name": "lane",
+      "type": "SELECT",
+      "universalIdentifier": "b9226328-79f2-4b1d-b62d-da017ba5ca83"
+    },
+    {
+      "object": "person",
+      "name": "source",
+      "type": "TEXT",
+      "universalIdentifier": "826dacd9-00b9-4d11-9ec8-be2d26778586"
+    },
+    {
+      "object": "person",
+      "name": "workspaceCustom",
+      "type": "MULTI_SELECT",
+      "universalIdentifier": "c290940d-fba3-4564-bb16-dfc4a11e7291"
+    },
+    {
+      "object": "person",
+      "name": "xLink",
+      "type": "LINKS",
+      "universalIdentifier": "7a2686f7-a142-4b97-be15-8dadc81fd05a"
+    },
+    {
+      "object": "workspaceMember",
+      "name": "authoredAttachments",
+      "type": "RELATION",
+      "universalIdentifier": "73095bad-77a6-4b20-8df1-a25f9d900306"
+    }
+  ]
+}
