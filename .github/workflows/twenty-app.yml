@@ -1,15 +1,18 @@
 name: twenty-app
 
-# The lead record app. On a pull request it builds the app and, when credentials are
-# available, asks the workspace for the plan: what an apply WOULD change, with
-# `--no-prune` so nothing the app does not declare is ever proposed for deletion.
-# Planning is read-only on the server: no registration, upload or sync.
+# The lead record app. On a pull request it builds the app, then asks the workspace
+# for the plan: what an apply WOULD change, with `--no-prune` so nothing the app does
+# not declare is ever proposed for deletion. Planning is read-only on the server: no
+# registration, upload or sync.
 #
 # Apply is a manual dispatch only, and stays off until the repository variable
 # TWENTY_APP_APPLY_ENABLED is "true" and the dispatch is confirmed by typing "apply".
 #
-# Configuration, never secrets in this file: the workspace URL is the repository
-# variable TWENTY_API_URL; the API key arrives as TWENTY_API_KEY at run time.
+# Credentials: none are stored in this repository. A job in the `twenty-prod`
+# environment logs in to Infisical with GitHub's OIDC token as a machine identity
+# that may read exactly one secret, TWENTY_API_KEY. Configuration lives in repository
+# variables, never in this file: TWENTY_API_URL, INFISICAL_DOMAIN,
+# INFISICAL_IDENTITY_ID and INFISICAL_PROJECT_SLUG.
 on:
   pull_request:
     paths:
@@ -31,7 +34,8 @@ env:
   TWENTY_CLI_VERSION: 2.57.0
 
 jobs:
-  plan:
+  # Every pull request, forks included: no workspace and no credentials needed.
+  build:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -43,16 +47,44 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: npm install -g twenty@${{ env.TWENTY_CLI_VERSION }}
-      - name: Build the app (no workspace needed)
+      - name: Build the app
         run: twenty app build --path twenty-app
+
+  # Same-repository pull requests only: GitHub gives a fork no OIDC token, and the
+  # identity trusts only this repository's `twenty-prod` environment.
+  plan:
+    needs: build
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: twenty-prod
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: npm install -g twenty@${{ env.TWENTY_CLI_VERSION }}
+      - name: Twenty key from Infisical over OIDC
+        uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_DOMAIN }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: prod
+          secret-name: TWENTY_API_KEY
       - name: Plan against the workspace
         env:
           TWENTY_API_URL: ${{ vars.TWENTY_API_URL }}
-          TWENTY_API_KEY: ${{ secrets.TWENTY_API_KEY }}
         run: |
           if [ -z "$TWENTY_API_URL" ] || [ -z "$TWENTY_API_KEY" ]; then
-            echo "::notice::No workspace credentials in this run; plan skipped (build only)."
-            exit 0
+            echo "::error::TWENTY_API_URL or the Infisical key is missing; a plan that cannot run is a failure, not a skip."
+            exit 1
           fi
           node twenty-app/scripts/stage-options.ts
           twenty app plan --path twenty-app --no-prune
@@ -64,6 +96,9 @@ jobs:
       vars.TWENTY_APP_APPLY_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: twenty-prod
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -74,10 +109,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm guard && pnpm -r typecheck && pnpm -r test
       - run: npm install -g twenty@${{ env.TWENTY_CLI_VERSION }}
+      - name: Twenty key from Infisical over OIDC
+        uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_DOMAIN }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: prod
+          secret-name: TWENTY_API_KEY
       - name: Stage options, then the app
         env:
           TWENTY_API_URL: ${{ vars.TWENTY_API_URL }}
-          TWENTY_API_KEY: ${{ secrets.TWENTY_API_KEY }}
         run: |
           node twenty-app/scripts/stage-options.ts --apply
           twenty app apply --path twenty-app --create --no-prune --no-input
