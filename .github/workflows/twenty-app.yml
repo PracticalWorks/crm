@@ -15,6 +15,7 @@ on:
     paths:
       - "twenty-app/**"
       - "packages/client/src/lead-record.ts"
+      - "packages/client/src/events.ts"
       - ".github/workflows/twenty-app.yml"
   workflow_dispatch:
     inputs:
