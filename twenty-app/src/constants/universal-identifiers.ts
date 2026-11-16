@@ -41,6 +41,16 @@ export const PERSON_OUTREACH_FIELDS = {
   outreachState: '4bba7ecb-388f-4471-80d2-63ef6a7e5b8a',
 } as const;
 
+/** The opportunity hooks: logic functions and the settings they read. */
+export const LOGIC_FUNCTIONS = {
+  opportunityOpened: '340790fe-9b1f-4b18-a98b-3f79f5d42928',
+  opportunityChanged: '684adc1c-03ac-4e09-8149-fbfec7daaa93',
+} as const;
+export const APPLICATION_VARIABLES = {
+  inngestEventUrl: 'b8365c01-6ef2-44b4-bbba-8292ace01578',
+  inngestEventKey: 'e101178b-87b4-4191-92ed-3f0a294330bc',
+} as const;
+
 export const VIEWS = {
   pipeline: 'ad0c843f-3f50-4814-bd70-cb4074d99531',
   byBrand: '7e6ee6f4-1851-4fd3-b7d4-bb69a13977d7',

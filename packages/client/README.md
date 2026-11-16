@@ -31,3 +31,26 @@ The base URL is injected by the caller. The API key is a secret passed in at con
 ## Types
 
 `CrmPort` is the interface the client implements. `CrmCompanyRef`, `CrmPersonRef`, `CrmNoteRef`, `CrmTaskRef` and `CrmOpportunityRef` are zod schemas, each with its inferred type of the same name.
+
+## Opportunity events
+
+The Twenty App in this repo sends an event to Inngest whenever a lead moves. The names and payload types come from this package, so a listener imports the same contract the sender uses:
+
+| Event | When | Extra data |
+| --- | --- | --- |
+| `crm/opportunity.opened` | an Opportunity is created | |
+| `crm/opportunity.stage-changed` | its stage changes | `fromStage`, `toStage` |
+| `crm/opportunity.closed` | it reaches Closed, or its outcome is set while Closed | `outcome` |
+| `crm/opportunity.updated` | its Type or Step changes and the stage does not | |
+
+Every event's `data` carries `opportunityId`, `actorId`, `brandId`, `type`, `stage`, `ownerId`, `before`, `after`, `diff` and `updatedFields`. Its `id` is `<opportunity>:<event>:<updatedAt>`, so Inngest drops a resent duplicate.
+
+```ts
+import { OPPORTUNITY_EVENTS, type OpportunityStageChangedData } from "@practicalworks/crm";
+
+inngest.createFunction({ id: "on-lead-moved" }, { event: OPPORTUNITY_EVENTS.STAGE_CHANGED }, async ({ event }) => {
+  const { fromStage, toStage } = event.data as OpportunityStageChangedData;
+});
+```
+
+`opportunityEvents(change)` is the pure function behind it: give it a created or updated record and it returns the events to send.

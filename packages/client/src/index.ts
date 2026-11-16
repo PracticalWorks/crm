@@ -9,6 +9,19 @@ export {
 } from "./client.js";
 export type { CrmPort, LeadFields, LeadRecordPort } from "./port.js";
 export {
+  OPPORTUNITY_EVENTS,
+  OPPORTUNITY_WATCHED_FIELDS,
+  opportunityEvents,
+  type OpportunityChange,
+  type OpportunityClosedData,
+  type OpportunityDiff,
+  type OpportunityEvent,
+  type OpportunityEventData,
+  type OpportunityEventName,
+  type OpportunitySnapshot,
+  type OpportunityStageChangedData,
+} from "./events.js";
+export {
   LEAD_MARKETS,
   LEAD_OUTCOMES,
   LEAD_SOURCES,
