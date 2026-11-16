@@ -439,7 +439,10 @@ export class CrmClient implements CrmPort, LeadRecordPort {
     const created = await this.request("POST", "/notes", { title, bodyV2: { markdown: note.body } });
     const noteId = unwrap(created, "createNote", "note")?.id;
     if (!noteId) throw new Error("crm note create returned no id");
-    await this.request("POST", "/noteTargets", { noteId, companyId });
+    // Twenty 2.x links a target through a morph relation: the join column is
+    // `targetCompanyId`. A plain `companyId` is a 400, "Object noteTarget doesn't
+    // have any companyId field".
+    await this.request("POST", "/noteTargets", { noteId, targetCompanyId: companyId });
     return { id: String(noteId), companyId };
   }
 
@@ -479,7 +482,16 @@ export class CrmClient implements CrmPort, LeadRecordPort {
     const taskId = raw?.id;
     if (!taskId) throw new Error("crm task create returned no id");
     if (input.companyId) {
-      await this.request("POST", "/taskTargets", { taskId, companyId: input.companyId });
+      // `targetCompanyId`, the morph relation's join column in Twenty 2.x.
+      // The task already exists by now, so a failed link must say so and name it:
+      // a bare error reads as "nothing happened" and a retry files a duplicate.
+      try {
+        await this.request("POST", "/taskTargets", { taskId, targetCompanyId: input.companyId });
+      } catch (err) {
+        throw new Error(
+          `crm task ${taskId} was created but not linked to company ${input.companyId} (do not retry the create): ${(err as Error).message}`,
+        );
+      }
     }
     // What we sent wins over what the create echoed back: Twenty may omit either
     // field from a create response, and the caller's own input is never wrong.
@@ -506,7 +518,7 @@ export class CrmClient implements CrmPort, LeadRecordPort {
       const list = unwrap(res, "tasks");
       return (Array.isArray(list) ? list : []).filter((t) => t?.id).map((t) => this.toTaskRef(t, null));
     }
-    const filter = `companyId[eq]:${encodeURIComponent(input.companyId)}`;
+    const filter = `targetCompanyId[eq]:${encodeURIComponent(input.companyId)}`;
     const res = await this.request("GET", `/taskTargets?filter=${filter}&depth=1&limit=${limit}`);
     const list = unwrap(res, "taskTargets");
     return (Array.isArray(list) ? list : [])
@@ -707,8 +719,12 @@ export class CrmClient implements CrmPort, LeadRecordPort {
       const res = await this.request("GET", `/taskTargets?filter=taskId[eq]:${encodeURIComponent(taskId)}&limit=5`);
       const rows = unwrap(res, "taskTargets");
       if (!Array.isArray(rows)) return undefined;
-      const linked = rows.find((row) => typeof row?.companyId === "string" && row.companyId.length > 0);
-      return linked ? String(linked.companyId) : null;
+      const companyOf = (row: any): unknown => row?.targetCompanyId ?? row?.companyId;
+      const linked = rows.find((row) => {
+        const id = companyOf(row);
+        return typeof id === "string" && id.length > 0;
+      });
+      return linked ? String(companyOf(linked)) : null;
     } catch {
       return undefined;
     }

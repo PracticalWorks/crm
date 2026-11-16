@@ -66,7 +66,7 @@ describe("CrmClient Twenty task response contracts", () => {
     expect(calls[1]).toMatchObject({
       url: "https://twenty.test/rest/taskTargets",
       method: "POST",
-      body: { taskId: "task_7f3c", companyId: "company_harbor" },
+      body: { taskId: "task_7f3c", targetCompanyId: "company_harbor" },
     });
   });
 

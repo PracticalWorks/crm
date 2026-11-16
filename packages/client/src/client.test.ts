@@ -313,7 +313,7 @@ describe("CrmClient.addNote", () => {
     expect(calls[1]).toMatchObject({
       url: "https://twenty.test/rest/noteTargets",
       method: "POST",
-      body: { noteId: "note1", companyId: "comp_1" },
+      body: { noteId: "note1", targetCompanyId: "comp_1" },
     });
     expect(ref).toEqual({ id: "note1", companyId: "comp_1" });
   });
@@ -347,7 +347,7 @@ describe("CrmClient tasks — the durable half of anything scheduled", () => {
     expect(calls[1]).toMatchObject({
       url: "https://twenty.test/rest/taskTargets",
       method: "POST",
-      body: { taskId: "task1", companyId: "comp_1" },
+      body: { taskId: "task1", targetCompanyId: "comp_1" },
     });
     expect(ref.taskUrl).toBe("https://twenty.test/object/task/task1");
     expect(ref.companyId).toBe("comp_1");
@@ -368,6 +368,17 @@ describe("CrmClient tasks — the durable half of anything scheduled", () => {
     await client.createTask({ title: "Someday" });
     expect(calls[0].body).toEqual({ title: "Someday" });
     expect("dueAt" in calls[0].body).toBe(false);
+  });
+
+  it("names the created task when the link fails, so a caller never retries into a duplicate", async () => {
+    const fetchImpl = (async (url: string) =>
+      url.endsWith("/taskTargets")
+        ? { ok: false, status: 400, text: async () => "Object taskTarget doesn't have any companyId field" }
+        : { ok: true, status: 200, json: async () => ({ data: { id: "task1" } }) }) as unknown as typeof fetch;
+    const client = new CrmClient(CONFIG, fetchImpl);
+    await expect(client.createTask({ title: "x", companyId: "comp_1" })).rejects.toThrow(
+      /task task1 was created but not linked to company comp_1/,
+    );
   });
 
   it("throws when Twenty returns no task id, so nothing links a phantom task", async () => {
@@ -408,7 +419,7 @@ describe("CrmClient tasks — the durable half of anything scheduled", () => {
 
     it("reads the company off the task's taskTarget after the patch", async () => {
       const calls: Call[] = [];
-      const client = new CrmClient(CONFIG, makeFetch(calls, routes([{ id: "tt1", taskId: "task1", companyId: "comp_1" }])));
+      const client = new CrmClient(CONFIG, makeFetch(calls, routes([{ id: "tt1", taskId: "task1", targetCompanyId: "comp_1" }])));
       const ref = await client.updateTaskDueAt("task1", "2026-08-20T09:00:00-04:00");
       expect(ref.companyId).toBe("comp_1");
       expect(calls).toHaveLength(2);
@@ -416,7 +427,7 @@ describe("CrmClient tasks — the durable half of anything scheduled", () => {
     });
 
     it("reports null for a task that genuinely has no client", async () => {
-      const client = new CrmClient(CONFIG, makeFetch([], routes([{ id: "tt1", taskId: "task1", companyId: null, personId: "p1" }])));
+      const client = new CrmClient(CONFIG, makeFetch([], routes([{ id: "tt1", taskId: "task1", targetCompanyId: null, targetPersonId: "p1" }])));
       expect((await client.updateTaskStatus("task1", "DONE")).companyId).toBeNull();
     });
 
@@ -514,7 +525,7 @@ describe("CrmClient.listTasks — so a commitment can be found again", () => {
     const tasks = await client.listTasks({ companyId: "comp_1" });
     expect(calls[0].method).toBe("GET");
     expect(calls[0].url).toBe(
-      "https://twenty.test/rest/taskTargets?filter=companyId[eq]:comp_1&depth=1&limit=50",
+      "https://twenty.test/rest/taskTargets?filter=targetCompanyId[eq]:comp_1&depth=1&limit=50",
     );
     expect(tasks).toEqual([
       {
