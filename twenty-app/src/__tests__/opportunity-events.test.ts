@@ -5,6 +5,8 @@ import { handleOpportunityEvent, toChange } from '../events/handle';
 import { opportunityEvents } from '../../../packages/client/src/events.ts';
 import opened from '../events/opportunity-opened.logic-function';
 import changed from '../events/opportunity-changed.logic-function';
+import role from '../default-role';
+import { STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from 'twenty-sdk/define';
 
 const KEY = 'test-event-key';
 const config = { url: 'https://inngest.test/', key: KEY };
@@ -127,6 +129,12 @@ describe('the hooks', () => {
       eventName: 'opportunity.updated',
       updatedFields: ['stage', 'leadType', 'step', 'outcome'],
     });
+  });
+
+  it('run as a role that can read Opportunities, or Twenty never delivers their events', () => {
+    const grants = (role.config.objectPermissions ?? []) as Array<{ objectUniversalIdentifier: string; canReadObjectRecords?: boolean; canUpdateObjectRecords?: boolean }>;
+    const opportunity = grants.find((g) => g.objectUniversalIdentifier === STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.opportunity.universalIdentifier);
+    expect(opportunity).toMatchObject({ canReadObjectRecords: true, canUpdateObjectRecords: false });
   });
 
   it('read a created event as opened and an updated one as a change', () => {
