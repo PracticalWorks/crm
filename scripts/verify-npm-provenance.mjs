@@ -10,7 +10,24 @@ function decodeDssePayload(payload) {
   }
 }
 
-export async function verifyNpmProvenance(packageName, version, registry = 'https://registry.npmjs.org') {
+/** The purl npm writes as an attestation's subject: `pkg:npm/%40scope/name@1.2.3`. */
+const npmPurl = (packageName, version) => `pkg:npm/${packageName.replace(/^@/, '%40')}@${version}`;
+
+/**
+ * Verifies that `packageName@version` on npm carries SLSA provenance built by
+ * `repository`'s `workflowPath` on `ref`. Only an attestation from that source
+ * counts: any other repo, workflow or branch can mint a valid-looking SLSA
+ * statement, so the predicate type alone proves nothing about this release.
+ */
+export async function verifyNpmProvenance(packageName, version, {
+  repository,
+  workflowPath = '.github/workflows/publish.yml',
+  ref = 'refs/heads/main',
+  registry = 'https://registry.npmjs.org',
+} = {}) {
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? '')) {
+    throw new Error('expected source repository (owner/name) is required');
+  }
   const encodedPackage = encodeURIComponent(packageName);
   const url = `${registry.replace(/\/$/, '')}/-/npm/v1/attestations/${encodedPackage}@${encodeURIComponent(version)}`;
   const response = await fetch(url);
@@ -37,6 +54,22 @@ export async function verifyNpmProvenance(packageName, version, registry = 'http
     throw new Error('registry returned no provenance attestation');
   }
 
+  const subject = npmPurl(packageName, version);
+  if (!statement.subject?.some((entry) => entry?.name === subject)) {
+    throw new Error(`provenance is not for ${subject}`);
+  }
+
+  const workflow = statement.predicate?.buildDefinition?.externalParameters?.workflow ?? {};
+  const want = { repository: `https://github.com/${repository}`, path: workflowPath, ref };
+  const got = { repository: workflow.repository, path: workflow.path, ref: workflow.ref };
+  const sameRepo = String(got.repository ?? '').toLowerCase() === want.repository.toLowerCase();
+  if (!sameRepo || got.path !== want.path || got.ref !== want.ref) {
+    throw new Error(
+      `provenance was built by ${got.repository ?? '?'} ${got.path ?? '?'} on ${got.ref ?? '?'}, ` +
+      `expected ${want.repository} ${want.path} on ${want.ref}`,
+    );
+  }
+
   return statement.predicateType;
 }
 
@@ -52,10 +85,11 @@ export async function waitForNpmProvenance(packageName, version, {
   delayMs = 15_000,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   log = () => {},
+  ...expected
 } = {}) {
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await verifyNpmProvenance(packageName, version);
+      return await verifyNpmProvenance(packageName, version, expected);
     } catch (error) {
       const transient = /HTTP (404|5\d\d)\b/.test(error.message);
       if (!transient || attempt >= attempts) throw error;
@@ -66,16 +100,16 @@ export async function waitForNpmProvenance(packageName, version, {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const [packageName, version] = process.argv.slice(2);
+  const [packageName, version, repository] = process.argv.slice(2);
 
-  if (!packageName || !version) {
-    console.error('Usage: node scripts/verify-npm-provenance.mjs <package> <version>');
+  if (!packageName || !version || !repository) {
+    console.error('Usage: node scripts/verify-npm-provenance.mjs <package> <version> <owner/repo>');
     process.exit(2);
   }
 
   try {
-    const predicateType = await waitForNpmProvenance(packageName, version, { log: (line) => console.log(line) });
-    console.log(`Verified npm provenance for ${packageName}@${version} (${predicateType})`);
+    const predicateType = await waitForNpmProvenance(packageName, version, { repository, log: (line) => console.log(line) });
+    console.log(`Verified npm provenance for ${packageName}@${version} (${predicateType}) from ${repository} .github/workflows/publish.yml on refs/heads/main`);
   } catch (error) {
     console.error(`Provenance verification failed for ${packageName}@${version}: ${error.message}`);
     process.exit(1);
