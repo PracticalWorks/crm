@@ -71,4 +71,4 @@ jobs:
         run: |
           name=$(node -p 'require("./package.json").name')
           version=$(node -p 'require("./package.json").version')
-          node ../../scripts/verify-npm-provenance.mjs "$name" "$version"
+          node ../../scripts/verify-npm-provenance.mjs "$name" "$version" PracticalWorks/crm
