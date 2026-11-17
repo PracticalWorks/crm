@@ -42,12 +42,13 @@ export async function verifyNpmProvenance(packageName, version, registry = 'http
 
 /**
  * npm takes a while to serve a version it just accepted: on 2026-11-16 0.13.0 read
- * 404 for ~20s and its attestation for ~70s after `npm publish` printed success.
- * So a release check waits through 404s (and 5xx) before it calls a release
- * unattested. Any other failure is final at once.
+ * 404 for ~20s and its attestation for ~70s after `npm publish` printed success,
+ * and on 2026-11-17 another package's attestation took over 5 minutes. So a
+ * release check waits up to 15 minutes through 404s (and 5xx) before it calls a
+ * release unattested. Any other failure is final at once.
  */
 export async function waitForNpmProvenance(packageName, version, {
-  attempts = 20,
+  attempts = 60,
   delayMs = 15_000,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   log = () => {},
