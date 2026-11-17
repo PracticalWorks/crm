@@ -1,12 +1,31 @@
 # @practicalworks/crm
 
-A typed client for the [Twenty](https://twenty.com) CRM's REST API. One `CrmClient` covers companies, people, notes, tasks and opportunities, behind one `CrmPort` interface, and persists nothing itself: Twenty stays the one source of truth for relationship records.
+**A typed client for the [Twenty](https://twenty.com) CRM's REST API.** Companies, people,
+notes, tasks and opportunities behind one `CrmPort` interface, so your services and agents
+read and write the CRM the same way and your tests can fake it. It stores nothing itself:
+Twenty stays the one source of truth for relationship records.
+
+[![npm](https://img.shields.io/npm/v/@practicalworks/crm)](https://www.npmjs.com/package/@practicalworks/crm)
+[![ci](https://github.com/PracticalWorks/crm/actions/workflows/ci.yml/badge.svg)](https://github.com/PracticalWorks/crm/actions/workflows/ci.yml)
+[![MIT licence](https://img.shields.io/badge/licence-MIT-blue)](https://github.com/PracticalWorks/crm/blob/main/LICENSE)
+
+## Install
+
+```sh
+npm install @practicalworks/crm
+```
+
+## Quick start
+
+Create an API key in Twenty (*Settings → APIs & Webhooks*), then:
 
 ```ts
 import { CrmClient } from "@practicalworks/crm";
 
-const crm = new CrmClient({ baseUrl: "https://your-twenty.example", apiKey: process.env.TWENTY_API_KEY! });
+const crm = new CrmClient({ baseUrl: "https://crm.example.com", apiKey: process.env.TWENTY_API_KEY! });
+
 const [company] = await crm.searchCompanies("Harbor");
+const people = await crm.findPeople({ email: "sam@harbor.example" });   // who just emailed us?
 ```
 
 The base URL is injected by the caller. The API key is a secret passed in at construction, never stored or logged here.
@@ -54,3 +73,9 @@ inngest.createFunction({ id: "on-lead-moved" }, { event: OPPORTUNITY_EVENTS.STAG
 ```
 
 `opportunityEvents(change)` is the pure function behind it: give it a created or updated record and it returns the events to send.
+
+## Who makes this
+
+[Practical Works](https://practical.works), a small software shop in Tampa Bay. Every app we run writes to Twenty through this client. Issues and ideas are welcome on [GitHub](https://github.com/PracticalWorks/crm/issues), and if you need a hand wiring your systems into a CRM, we [take on projects](https://practical.works).
+
+MIT licensed.
