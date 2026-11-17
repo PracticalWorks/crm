@@ -132,6 +132,9 @@ export const OUTREACH_STATES = options([
   { value: "OPTED_OUT", label: "Opted out" },
   { value: "BOUNCED", label: "Bounced" },
   { value: "FINISHED", label: "Finished" },
+  // Enrolled, not yet emailed: the list shows in Twenty before it is approved.
+  // Appended last, so the existing options keep their positions on apply.
+  { value: "QUEUED", label: "Queued" },
 ]);
 export type OutreachState = (typeof OUTREACH_STATES)[number]["value"];
 
