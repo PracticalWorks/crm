@@ -282,7 +282,7 @@ describe("OUTREACH_PERSON_FIELDS", () => {
       "outreachState:SELECT",
     ]);
     const stateField = OUTREACH_PERSON_FIELDS.find((f) => f.name === "outreachState") as { options?: readonly { value: string }[] };
-    expect(stateField.options?.map((o) => o.value)).toEqual(["ACTIVE", "REPLIED", "OPTED_OUT", "BOUNCED", "FINISHED"]);
+    expect(stateField.options?.map((o) => o.value)).toEqual(["ACTIVE", "REPLIED", "OPTED_OUT", "BOUNCED", "FINISHED", "QUEUED"]);
     expect(OUTREACH_STATES.every((o) => /^[A-Z_]+$/.test(o.value))).toBe(true);
   });
 });
