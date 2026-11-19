@@ -7,6 +7,8 @@ import {
   taskCreateResponse,
   taskListResponse,
   taskTargetListResponse,
+  taskWithBodyListResponse,
+  workspaceMemberListResponse,
 } from "./fixtures/twenty-contracts.js";
 
 type Call = { url: string; method?: string; body?: unknown };
@@ -108,6 +110,34 @@ describe("CrmClient Twenty task response contracts", () => {
       "crm task create returned no id",
     );
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe("CrmClient Twenty task body and workspace member contracts", () => {
+  it("carries a task's bodyV2 markdown back as its body", async () => {
+    const client = new CrmClient(config, fixtureFetch([], () => taskWithBodyListResponse));
+
+    await expect(client.listTasks()).resolves.toEqual([
+      {
+        id: "task_b0d7",
+        title: "Confirm the late checkout",
+        dueAt: null,
+        companyId: null,
+        status: "TODO",
+        body: "From the guest thread",
+        taskUrl: "https://twenty.test/object/task/task_b0d7",
+      },
+    ]);
+  });
+
+  it("maps a workspace member's name composite and userEmail", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(config, fixtureFetch(calls, () => workspaceMemberListResponse));
+
+    await expect(client.listWorkspaceMembers()).resolves.toEqual([
+      { id: "member_jo", name: "Jo Rivera", email: "jo@harbor.example" },
+    ]);
+    expect(calls[0]).toMatchObject({ url: "https://twenty.test/rest/workspaceMembers?limit=200", method: "GET" });
   });
 });
 
