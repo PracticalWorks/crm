@@ -1,6 +1,14 @@
 import { LEAD_STAGES, type LeadLink, type LeadOutcome, type LeadStep } from "./lead-record.js";
-import type { CrmPort, LeadFields, LeadRecordPort } from "./port.js";
-import type { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef } from "./schemas.js";
+import type { CrmPort, LeadFields, LeadRecordPort, WorkspaceMemberPort } from "./port.js";
+import type {
+  CrmBrandRef,
+  CrmCompanyRef,
+  CrmNoteRef,
+  CrmOpportunityRef,
+  CrmPersonRef,
+  CrmTaskRef,
+  CrmWorkspaceMemberRef,
+} from "./schemas.js";
 
 /**
  * CrmClient — one shared Twenty CRM integration. Wraps Twenty's REST API
@@ -202,7 +210,7 @@ function allPhones(raw: any): string[] {
   return [raw?.phones?.primaryPhoneNumber ?? raw?.phone ?? "", ...more].filter(Boolean);
 }
 
-export class CrmClient implements CrmPort, LeadRecordPort {
+export class CrmClient implements CrmPort, LeadRecordPort, WorkspaceMemberPort {
   private readonly root: string;
   private readonly api: string;
 
@@ -466,17 +474,20 @@ export class CrmClient implements CrmPort, LeadRecordPort {
    *
    * Twenty's task assignee is a WorkspaceMember relation, so callers must pass
    * a WorkspaceMember id, not a Person id. Keep it on the task POST, while the
-   * separate taskTarget join below.
+   * separate taskTarget join below. The body is written as `bodyV2` markdown, as
+   * a note's is: a task has no plain `body` field either.
    */
   async createTask(input: {
     title: string;
     dueAt?: string;
     companyId?: string;
     assigneeId?: string;
+    body?: string;
   }): Promise<CrmTaskRef> {
     const body: Record<string, unknown> = { title: input.title };
     if (input.dueAt) body.dueAt = input.dueAt;
     if (input.assigneeId) body.assigneeId = input.assigneeId;
+    if (input.body) body.bodyV2 = { markdown: input.body };
     const created = await this.request("POST", "/tasks", body);
     const raw = unwrap(created, "createTask", "task");
     const taskId = raw?.id;
@@ -499,7 +510,19 @@ export class CrmClient implements CrmPort, LeadRecordPort {
       ...this.toTaskRef(raw, input.companyId ?? null),
       title: input.title,
       dueAt: input.dueAt ?? null,
+      ...(input.body && { body: input.body }),
     };
+  }
+
+  /**
+   * Every teammate with a login here: the WorkspaceMember ids a task's assignee and an
+   * opportunity's owner take, each with its name and login email. Read fresh, up to
+   * Twenty's 200-row page.
+   */
+  async listWorkspaceMembers(): Promise<CrmWorkspaceMemberRef[]> {
+    const res = await this.request("GET", "/workspaceMembers?limit=200");
+    const list = unwrap(res, "workspaceMembers");
+    return (Array.isArray(list) ? list : []).filter((m) => m?.id).map(toWorkspaceMemberRef);
   }
 
   /**
@@ -740,6 +763,7 @@ export class CrmClient implements CrmPort, LeadRecordPort {
       dueAt: raw?.dueAt ?? null,
       companyId,
       status: raw?.status ?? null,
+      ...(raw?.bodyV2 !== undefined && { body: raw.bodyV2?.markdown || null }),
       taskUrl: this.taskUrl(id),
     };
   }
@@ -784,6 +808,16 @@ function linkUrls(raw: unknown): string[] {
   const links = raw as { primaryLinkUrl?: string; secondaryLinks?: Array<{ url?: string }> | null } | null;
   if (!links) return [];
   return [links.primaryLinkUrl ?? "", ...(links.secondaryLinks ?? []).map((l) => l?.url ?? "")].filter(Boolean);
+}
+
+/** A WorkspaceMember's `name` is a FULL_NAME composite; its login email is `userEmail`. */
+function toWorkspaceMemberRef(raw: any): CrmWorkspaceMemberRef {
+  const name = raw?.name ?? {};
+  return {
+    id: String(raw.id),
+    name: [name.firstName, name.lastName].filter(Boolean).join(" ").trim(),
+    email: raw?.userEmail || null,
+  };
 }
 
 function toBrandRef(raw: any): CrmBrandRef {

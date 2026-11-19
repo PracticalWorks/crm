@@ -506,6 +506,114 @@ describe("CrmClient tasks — the durable half of anything scheduled", () => {
   });
 });
 
+describe("CrmClient task body: where a task came from", () => {
+  const created = (url: string) => (url.endsWith("/tasks") ? { data: { createTask: { id: "task1", title: "T" } } } : { data: { id: "tt1" } });
+
+  it("sends the body as bodyV2 markdown, as a note does, and returns what it wrote", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, created));
+    const ref = await client.createTask({ title: "Confirm the late checkout", body: "From the guest thread: https://inbox.example/t/42" });
+    expect(calls[0].body).toEqual({
+      title: "Confirm the late checkout",
+      bodyV2: { markdown: "From the guest thread: https://inbox.example/t/42" },
+    });
+    expect(ref.body).toBe("From the guest thread: https://inbox.example/t/42");
+  });
+
+  it("puts nothing new on the wire without a body: the request is byte for byte the one 0.14.0 sent", async () => {
+    const wire: Array<{ url: string; init: unknown }> = [];
+    const fetchImpl = (async (url: string, init?: unknown) => {
+      wire.push({ url, init });
+      return { ok: true, status: 200, json: async () => created(url) };
+    }) as unknown as typeof fetch;
+    await new CrmClient(CONFIG, fetchImpl).createTask({
+      title: "Touch base with Jo",
+      dueAt: "2026-08-11T14:00:00-04:00",
+      companyId: "comp_1",
+      assigneeId: "user_1",
+    });
+    expect(wire[0]).toEqual({
+      url: "https://twenty.test/rest/tasks",
+      init: {
+        method: "POST",
+        headers: { Authorization: "Bearer k", "Content-Type": "application/json" },
+        body: '{"title":"Touch base with Jo","dueAt":"2026-08-11T14:00:00-04:00","assigneeId":"user_1"}',
+      },
+    });
+  });
+
+  it("treats an empty body as no body", async () => {
+    const calls: Call[] = [];
+    const ref = await new CrmClient(CONFIG, makeFetch(calls, created)).createTask({ title: "Someday", body: "" });
+    expect(calls[0].body).toEqual({ title: "Someday" });
+    expect("body" in ref).toBe(false);
+  });
+
+  it("reads the body back off bodyV2, null when the task has none, absent when the record does not carry it", async () => {
+    const client = new CrmClient(
+      CONFIG,
+      makeFetch([], () => ({
+        data: {
+          tasks: [
+            { id: "task1", title: "A", bodyV2: { blocknote: "[]", markdown: "Guest asked twice" } },
+            { id: "task2", title: "B", bodyV2: { blocknote: null, markdown: null } },
+            { id: "task3", title: "C", bodyV2: { blocknote: "", markdown: "" } },
+            { id: "task4", title: "D" },
+          ],
+        },
+      })),
+    );
+    const tasks = await client.listTasks();
+    expect(tasks.map((t) => t.body)).toEqual(["Guest asked twice", null, null, undefined]);
+    expect("body" in tasks[3]).toBe(false);
+  });
+
+  it("reads a company's task bodies through its taskTargets", async () => {
+    const client = new CrmClient(
+      CONFIG,
+      makeFetch([], () => ({ data: { taskTargets: [{ id: "tt1", task: { id: "task1", title: "A", bodyV2: { markdown: "Owner call notes" } } }] } })),
+    );
+    expect((await client.listTasks({ companyId: "comp_1" }))[0].body).toBe("Owner call notes");
+  });
+});
+
+describe("CrmClient.listWorkspaceMembers: the teammates a task can be assigned to", () => {
+  it("reads every member with its WorkspaceMember id, full name and login email", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(
+      CONFIG,
+      makeFetch(calls, () => ({
+        data: {
+          workspaceMembers: [
+            { id: "member_jo", name: { firstName: "Jo", lastName: "Rivera" }, userEmail: "jo@harbor.example", userId: "user_jo" },
+            { id: "member_sam", name: { firstName: "Sam", lastName: "" }, userEmail: null },
+            { id: "member_x", name: null },
+          ],
+        },
+      })),
+    );
+    const members = await client.listWorkspaceMembers();
+    expect(calls[0]).toMatchObject({ method: "GET", url: "https://twenty.test/rest/workspaceMembers?limit=200" });
+    expect(members).toEqual([
+      { id: "member_jo", name: "Jo Rivera", email: "jo@harbor.example" },
+      { id: "member_sam", name: "Sam", email: null },
+      { id: "member_x", name: "", email: null },
+    ]);
+  });
+
+  it("drops a row with no id, so no caller assigns to a member it cannot name", async () => {
+    const client = new CrmClient(
+      CONFIG,
+      makeFetch([], () => ({ data: { workspaceMembers: [{ name: { firstName: "Ghost" } }, { id: "member_jo", name: { firstName: "Jo" } }] } })),
+    );
+    expect((await client.listWorkspaceMembers()).map((m) => m.id)).toEqual(["member_jo"]);
+  });
+
+  it("returns [] when Twenty answers with no list", async () => {
+    expect(await new CrmClient(CONFIG, makeFetch([], () => ({ data: {} }))).listWorkspaceMembers()).toEqual([]);
+  });
+});
+
 describe("CrmClient.listTasks — so a commitment can be found again", () => {
   it("reads a company's tasks through taskTargets, because a task carries no company", async () => {
     const calls: Call[] = [];
