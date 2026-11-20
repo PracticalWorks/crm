@@ -265,8 +265,11 @@ export class CrmClient implements CrmPort, LeadRecordPort {
   }
 
   async searchCompanies(query: string): Promise<CrmCompanyRef[]> {
-    // ilike is case-insensitive substring; wrap in % so partial names match.
-    const filter = `name[ilike]:${encodeURIComponent(`%${query}%`)}`;
+    // ilike is case-insensitive substring; wrap in % so partial names match. The value is quoted, as in
+    // findCompanyByDomain: unquoted, a comma in the name ("Acme, LLC") splits Twenty's filter and the read is a 400.
+    // A double quote or backslash would end the quoted value, so each is a one-character wildcard instead.
+    const safe = query.replace(/["\\]/g, "_");
+    const filter = encodeURIComponent(`name[ilike]:"%${safe}%"`);
     const res = await this.request("GET", `/companies?filter=${filter}&depth=1&limit=20`);
     const list = unwrap(res, "companies");
     return (Array.isArray(list) ? list : []).map((c) => this.toCompanyRef(c));
