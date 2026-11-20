@@ -30,6 +30,22 @@ describe("CrmClient deep-link + base normalization", () => {
 });
 
 describe("CrmClient.searchCompanies", () => {
+  it("quotes the name, so a comma never splits Twenty's filter (\"Acme, LLC\" was a 400)", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { companies: [] } })));
+    await client.searchCompanies("Acme Staffing, LLC");
+    const filter = new URL(calls[0].url).searchParams.get("filter");
+    expect(filter).toBe('name[ilike]:"%Acme Staffing, LLC%"');
+  });
+
+  it("turns a double quote or backslash into a one-character wildcard, so the quoted value never ends early", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { companies: [] } })));
+    await client.searchCompanies('The "Best" Co\\');
+    const filter = new URL(calls[0].url).searchParams.get("filter");
+    expect(filter).toBe('name[ilike]:"%The _Best_ Co_%"');
+  });
+
   it("filters by ilike substring, depth=1, and maps to refs with deep-links", async () => {
     const calls: Call[] = [];
     const client = new CrmClient(
@@ -41,7 +57,7 @@ describe("CrmClient.searchCompanies", () => {
     const results = await client.searchCompanies("Harbor");
     expect(calls[0].method).toBe("GET");
     expect(calls[0].url).toBe(
-      "https://twenty.test/rest/companies?filter=name[ilike]:%25Harbor%25&depth=1&limit=20",
+      `https://twenty.test/rest/companies?filter=${encodeURIComponent('name[ilike]:"%Harbor%"')}&depth=1&limit=20`,
     );
     expect(results).toEqual([
       {
