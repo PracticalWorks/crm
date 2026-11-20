@@ -327,7 +327,10 @@ export class CrmClient implements CrmPort, LeadRecordPort {
 
   async createCompany(input: { name: string; domainName?: string }): Promise<CrmCompanyRef> {
     const body: Record<string, unknown> = { name: input.name };
-    if (input.domainName) body.domainName = input.domainName;
+    // Twenty's domainName is a LINKS composite: a bare string is refused with a 400 ("Invalid object value"), which
+    // failed every create with a domain and left the caller's Person unwritten.
+    const domain = normalizeDomain(input.domainName);
+    if (domain) body.domainName = toLinks([`https://${domain}`]);
     const res = await this.request("POST", "/companies", body);
     return this.toCompanyRef(unwrap(res, "createCompany", "company"));
   }

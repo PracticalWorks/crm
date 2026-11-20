@@ -99,6 +99,29 @@ describe("CrmClient.createCompany", () => {
     expect(company.id).toBe("comp_new");
     expect(company.crmUrl).toBe("https://twenty.test/object/company/comp_new");
   });
+
+  it("sends the domain as a links composite, never a bare string (Twenty refuses one with a 400)", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(
+      CONFIG,
+      makeFetch(calls, () => ({
+        data: { createCompany: { id: "comp_d", name: "Acme", domainName: { primaryLinkUrl: "https://acme.io", primaryLinkLabel: "", secondaryLinks: [] } } },
+      })),
+    );
+    const company = await client.createCompany({ name: "Acme", domainName: "WWW.Acme.io/" });
+    expect(calls[0].body).toEqual({
+      name: "Acme",
+      domainName: { primaryLinkUrl: "https://acme.io", primaryLinkLabel: "", secondaryLinks: [] },
+    });
+    expect(company.domainName).toBe("https://acme.io");
+  });
+
+  it("sends no domain when the one given is empty", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { createCompany: { id: "c", name: "X" } } })));
+    await client.createCompany({ name: "X", domainName: "  " });
+    expect(calls[0].body).toEqual({ name: "X" });
+  });
 });
 
 describe("CrmClient.createPerson", () => {
