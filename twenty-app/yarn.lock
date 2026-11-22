@@ -228,6 +228,10 @@ __metadata:
   resolution: "@practicalworks/crm-twenty-app@workspace:."
   dependencies:
     "@types/node": "npm:^24.7.2"
+    "@types/react": "npm:^19.2.0"
+    react: "npm:^19.2.0"
+    react-dom: "npm:^19.2.0"
+    twenty-client-sdk: "npm:2.57.0"
     twenty-sdk: "npm:2.57.0"
     typescript: "npm:^5.9.3"
     vitest: "npm:^3.0.0"
@@ -472,6 +476,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/react@npm:^19.2.0":
+  version: 19.3.0
+  resolution: "@types/react@npm:19.3.0"
+  dependencies:
+    csstype: "npm:^3.2.2"
+  checksum: 10c0/fbcabf303f935ca9f36ed2dcf81751cf84744098c5a683c8a62a0fa7edd31714b48d5c46b12fd0014f7f2dfe4d9ec6de428a850748eec719a70294e51029551b
+  languageName: node
+  linkType: hard
+
 "@types/ws@npm:^6.0.1":
   version: 6.0.4
   resolution: "@types/ws@npm:6.0.4"
@@ -623,6 +636,13 @@ __metadata:
   version: 3.0.0
   resolution: "chownr@npm:3.0.0"
   checksum: 10c0/43925b87700f7e3893296c8e9c56cc58f926411cce3a6e5898136daaf08f08b9a8eb76d37d3267e707d0dcc17aed2e2ebdf5848c0c3ce95cf910a919935c1b10
+  languageName: node
+  linkType: hard
+
+"csstype@npm:^3.2.2":
+  version: 3.2.4
+  resolution: "csstype@npm:3.2.4"
+  checksum: 10c0/29568f520e1e47b2e6e88e2cffe3b5369f08c1245c73e69595623cafb38816bd353387e0d665ce4330cfe2c9244f2a4671abe761cbd0b535bc27fab12b6b8a25
   languageName: node
   linkType: hard
 
