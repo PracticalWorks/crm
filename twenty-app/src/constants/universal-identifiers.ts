@@ -89,3 +89,15 @@ export const TRIAGE_LOGIC_FUNCTIONS = {
 } as const;
 export const TRIAGE_PANEL_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER = '5f5746a5-e809-4257-ae1e-75d46ef3f976';
 export const TRIAGE_PANEL_WIDGET_UNIVERSAL_IDENTIFIER = '400e54eb-c20d-49a3-87e0-31306655e865';
+
+// ─── The lead warden ───
+
+/** The Task field that marks a warden task with the rule that opened it. */
+export const WARDEN_TASK_FIELDS = {
+  wardenRule: '93f7d869-27c7-4e3d-a244-698c68e7acd3',
+} as const;
+export const WARDEN_LOGIC_FUNCTIONS = {
+  sweep: '6891348e-b393-497e-9e2a-2c4507090f78',
+  leadCreated: '028dbce5-ef86-40ab-b71f-89ac12c5cdaf',
+  leadUpdated: '7474feec-cfd0-4b51-873f-dce98e05cfb0',
+} as const;
