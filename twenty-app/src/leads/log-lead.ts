@@ -46,16 +46,17 @@ function validate(input: Record<string, unknown>): string[] {
   return errors;
 }
 
-type OpportunityRow = { id?: string; name?: string; sourceDetail?: { primaryLinkUrl?: string } | null };
+type OpportunityRow = { id?: string; name?: string; createdAt?: string; sourceDetail?: { primaryLinkUrl?: string } | null };
 
-/** The Opportunity whose Source detail is this link, or null. Twenty narrows with ilike; the match is exact here. */
-async function findByLink(key: string, rest: TwentyRest): Promise<LoggedOpportunity | null> {
+/** Every Opportunity whose Source detail is this link. Twenty narrows with ilike; the match is exact here. */
+export async function opportunitiesWithLink(key: string, rest: TwentyRest): Promise<(LoggedOpportunity & { createdAt?: string })[]> {
   // Narrowed on host and path only. URL parsing has already percent-encoded any quote.
   const narrow = key.replace(/\?.*$/, '');
   const filter = encodeURIComponent(`sourceDetail.primaryLinkUrl[ilike]:"%${narrow}%"`);
   const res = await rest<{ data?: { opportunities?: OpportunityRow[] } }>('GET', `opportunities?filter=${filter}&limit=60`);
-  const hit = (res.data?.opportunities ?? []).find((o) => o?.id && linkKey(o.sourceDetail?.primaryLinkUrl ?? '') === key);
-  return hit ? { id: String(hit.id), name: hit.name ?? '' } : null;
+  return (res.data?.opportunities ?? [])
+    .filter((o) => o?.id && linkKey(o.sourceDetail?.primaryLinkUrl ?? '') === key)
+    .map((o) => ({ id: String(o.id), name: o.name ?? '', ...(o.createdAt && { createdAt: o.createdAt }) }));
 }
 
 export async function logLead(raw: unknown, rest: TwentyRest): Promise<LogLeadResult> {
@@ -65,8 +66,11 @@ export async function logLead(raw: unknown, rest: TwentyRest): Promise<LogLeadRe
 
   const link = text(input.link);
   const key = linkKey(link)!;
-  const existing = await findByLink(key, rest);
-  if (existing) return { status: 'duplicate', existing, message: `This link is already logged as "${existing.name}".` };
+  const [hit] = await opportunitiesWithLink(key, rest);
+  if (hit) {
+    const existing = { id: hit.id, name: hit.name };
+    return { status: 'duplicate', existing, message: `This link is already logged as "${existing.name}".` };
+  }
 
   const name = text(input.name) || key.replace(/\?.*$/, '');
   const body = toOpportunityBody({
