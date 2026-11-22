@@ -8,10 +8,13 @@ import {
 
 import {
   BRAND_FIELDS,
+  BRAND_FLOOR_RATE_FIELDS,
   BRAND_OBJECT_UNIVERSAL_IDENTIFIER,
   OPPORTUNITY_FIELDS,
   WORKSPACE_MEMBER_BRANDS_FIELD_UNIVERSAL_IDENTIFIER,
 } from '../constants/universal-identifiers';
+import { LEAD_TYPES } from '../lead-record.ts';
+import { floorRateFieldName } from '../leads/triage';
 
 // A brand is a record, not a select: a new brand is a row seeded from the brand
 // roster at run time, never a schema change. Kept small on purpose; what a brand
@@ -87,5 +90,16 @@ export default defineObject({
         relationType: RelationType.ONE_TO_MANY,
       },
     },
+    // One floor rate per lead Type, which the triage panel shows. Text, because a
+    // floor can be a range or a share ("$60 to $80 an hour", "at least 15%").
+    // Set in Twenty's UI only: no rate is written in this repo.
+    ...LEAD_TYPES.map((type) => ({
+      universalIdentifier: BRAND_FLOOR_RATE_FIELDS[type.value],
+      name: floorRateFieldName(type.value),
+      type: FieldType.TEXT as const,
+      label: `Floor rate: ${type.label}`,
+      description: `The lowest rate this brand takes on a ${type.label.toLowerCase()} lead. Shown on the triage panel.`,
+      icon: 'IconCoin',
+    })),
   ],
 });

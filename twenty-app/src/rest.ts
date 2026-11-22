@@ -3,7 +3,7 @@
 // method, path and status, never the token.
 
 export type TwentyRest = <T = { data?: Record<string, unknown> }>(
-  method: 'GET' | 'POST',
+  method: 'GET' | 'POST' | 'PATCH',
   path: string,
   body?: Record<string, unknown>,
 ) => Promise<T>;
