@@ -45,7 +45,12 @@ export const PERSON_OUTREACH_FIELDS = {
 export const LOGIC_FUNCTIONS = {
   opportunityOpened: '340790fe-9b1f-4b18-a98b-3f79f5d42928',
   opportunityChanged: '684adc1c-03ac-4e09-8149-fbfec7daaa93',
+  logLead: '88ac2997-3b64-49df-a1c3-fad890a29184',
 } as const;
+
+/** The command-menu form that logs a lead by hand. */
+export const LOG_LEAD_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER = 'b7331292-dd42-48a0-9844-dcc4ff0a8056';
+export const LOG_LEAD_COMMAND_MENU_ITEM_UNIVERSAL_IDENTIFIER = '859c4640-8ef5-40ec-83c7-1603d2f7f5d2';
 export const APPLICATION_VARIABLES = {
   inngestEventUrl: 'b8365c01-6ef2-44b4-bbba-8292ace01578',
   inngestEventKey: 'e101178b-87b4-4191-92ed-3f0a294330bc',
