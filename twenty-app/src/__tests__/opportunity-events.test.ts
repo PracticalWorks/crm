@@ -106,7 +106,7 @@ describe('deliver', () => {
 });
 
 describe('restNotifier', () => {
-  it('creates the Task for the owner, then targets it at the Opportunity', async () => {
+  it('creates the Task for the owner, then targets it at the Opportunity through targetOpportunityId', async () => {
     const calls: Array<{ url: string; auth: string | null; body: any }> = [];
     const fetchFn = (async (url: string, init?: RequestInit) => {
       calls.push({ url: String(url), auth: new Headers(init?.headers).get('authorization'), body: JSON.parse(String(init?.body)) });
@@ -115,7 +115,8 @@ describe('restNotifier', () => {
     await restNotifier('https://twenty.test/', 'app-token', fetchFn)({ opportunityId: 'opp1', ownerId: 'member1', title: 'T' });
     expect(calls.map((c) => c.url)).toEqual(['https://twenty.test/rest/tasks', 'https://twenty.test/rest/taskTargets']);
     expect(calls[0]!.body).toMatchObject({ title: 'T', status: 'TODO', assigneeId: 'member1' });
-    expect(calls[1]!.body).toEqual({ taskId: 'task1', opportunityId: 'opp1' });
+    // Twenty 2.x's morph relation: a bare `opportunityId` is a 400, so the Task never reaches the lead.
+    expect(calls[1]!.body).toEqual({ taskId: 'task1', targetOpportunityId: 'opp1' });
     expect(calls[0]!.auth).toBe('Bearer app-token');
   });
 });
