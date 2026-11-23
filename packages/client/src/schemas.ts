@@ -56,10 +56,26 @@ export const CrmTaskRef = z.object({
    * failure. Null when the record carries no status.
    */
   status: z.string().nullable(),
+  /**
+   * The task's text as markdown (Twenty's `bodyV2`): where it came from, what it is
+   * about. Null when the task has none; absent when the record read carried no body.
+   */
+  body: z.string().nullable().optional(),
   /** The deep-link a teammate opens to see the task. */
   taskUrl: z.string().min(1),
 });
 export type CrmTaskRef = z.infer<typeof CrmTaskRef>;
+
+/**
+ * A teammate with a login in the workspace (a Twenty WorkspaceMember). `id` is what a
+ * task's `assigneeId` and an opportunity's `ownerId` take; `email` is the login email.
+ */
+export const CrmWorkspaceMemberRef = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  email: z.string().nullable(),
+});
+export type CrmWorkspaceMemberRef = z.infer<typeof CrmWorkspaceMemberRef>;
 
 /**
  * A lead: one opportunity per lead, bid, job application or inquiry. The lead

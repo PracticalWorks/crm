@@ -1,5 +1,5 @@
 import type { LeadLink, LeadMarket, LeadOutcome, LeadSource, LeadStep, LeadType, TriageVerdict } from "./lead-record.js";
-import type { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef } from "./schemas.js";
+import type { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef, CrmWorkspaceMemberRef } from "./schemas.js";
 
 /**
  * The lead record fields an opportunity carries (see `lead-record.ts` for the
@@ -57,9 +57,10 @@ export interface CrmPort {
    * Record a commitment as a task. `companyId` is optional: internal work is still
    * a commitment, it just has no relationship to hang off. `assigneeId` is a
    * Twenty WorkspaceMember id, not a Person id; callers obtain it from the
-   * workspace members list before creating an assigned task.
+   * workspace members list before creating an assigned task. `body` is the task's
+   * text in markdown, such as a link back to the conversation it came from.
    */
-  createTask(input: { title: string; dueAt?: string; companyId?: string; assigneeId?: string }): Promise<CrmTaskRef>;
+  createTask(input: { title: string; dueAt?: string; companyId?: string; assigneeId?: string; body?: string }): Promise<CrmTaskRef>;
   /**
    * Read commitments back. Omit `companyId` for everything; pass one for a single
    * client's. The two are different queries, not a filter: a task holds no company
@@ -127,4 +128,14 @@ export interface LeadRecordPort {
     vaultNote?: string | null;
     goal?: string | null;
   }): Promise<CrmBrandRef>;
+}
+
+/**
+ * The teammates work is assigned to. Kept apart from `CrmPort`, as `LeadRecordPort`
+ * is, so the existing implementers of that port keep compiling; the client
+ * implements all three.
+ */
+export interface WorkspaceMemberPort {
+  /** Every workspace member, read fresh: the ids `assigneeId` and `ownerId` take, with each name and login email. */
+  listWorkspaceMembers(): Promise<CrmWorkspaceMemberRef[]>;
 }

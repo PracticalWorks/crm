@@ -44,12 +44,14 @@ The base URL is injected by the caller. The API key is a secret passed in at con
 - **Notes:** written as `bodyV2.markdown` and linked to a company through `noteTargets`.
 - **Tasks:**
   - `createTask` takes an optional `assigneeId`, which must be a Twenty **WorkspaceMember id**, not a Person id.
+  - `createTask` takes an optional `body` in markdown, written as `bodyV2` like a note's. A task read back carries it as `body`: null when the task has none. A call without a body sends exactly what it did before.
   - Tasks link to companies through Twenty's separate `taskTargets` join, so "a company's tasks" and "all tasks" are different queries.
+- **Workspace members:** `listWorkspaceMembers()` returns each teammate's WorkspaceMember `id`, `name` and login `email`. Those ids are what `assigneeId` and `ownerId` take, so a caller can assign by name.
 - **Opportunities:** they attach directly to companies and carry a stage. `createOpportunity`, `listOpportunities` and `updateOpportunityStage` cover them.
 
 ## Types
 
-`CrmPort` is the interface the client implements. `CrmCompanyRef`, `CrmPersonRef`, `CrmNoteRef`, `CrmTaskRef` and `CrmOpportunityRef` are zod schemas, each with its inferred type of the same name.
+`CrmPort` is the interface the client implements, with `LeadRecordPort` and `WorkspaceMemberPort` beside it. `CrmCompanyRef`, `CrmPersonRef`, `CrmNoteRef`, `CrmTaskRef`, `CrmOpportunityRef` and `CrmWorkspaceMemberRef` are zod schemas, each with its inferred type of the same name.
 
 ## Opportunity events
 

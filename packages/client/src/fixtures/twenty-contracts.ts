@@ -83,3 +83,40 @@ export const opportunityUpdateResponse = {
     },
   },
 } as const;
+
+export const taskWithBodyListResponse = {
+  data: {
+    tasks: [
+      {
+        id: "task_b0d7",
+        title: "Confirm the late checkout",
+        dueAt: null,
+        status: "TODO",
+        assigneeId: "member_jo",
+        bodyV2: {
+          blocknote: '[{"type":"paragraph","content":[{"type":"text","text":"From the guest thread"}]}]',
+          markdown: "From the guest thread",
+        },
+      },
+    ],
+  },
+} as const;
+
+export const workspaceMemberListResponse = {
+  data: {
+    workspaceMembers: [
+      {
+        id: "member_jo",
+        name: { firstName: "Jo", lastName: "Rivera" },
+        userEmail: "jo@harbor.example",
+        userId: "user_jo",
+        colorScheme: "System",
+        locale: "en",
+        avatarUrl: "",
+        jobTitle: "",
+      },
+    ],
+  },
+  pageInfo: { hasNextPage: false, startCursor: "cur-0", endCursor: "cur-1" },
+  totalCount: 1,
+} as const;
