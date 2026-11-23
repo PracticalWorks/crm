@@ -790,7 +790,7 @@ function definedOnly<T extends Record<string, unknown>>(patch: T): Partial<T> {
  * `leadType` and `leadLinks`. Links are LINKS composites; `null` clears one (an empty
  * composite, which Twenty accepts where it refuses a bare null).
  */
-function toOpportunityBody(fields: LeadFields & { stage?: string; name?: string; companyId?: string }): Record<string, unknown> {
+export function toOpportunityBody(fields: LeadFields & { stage?: string; name?: string; companyId?: string }): Record<string, unknown> {
   const { type, links, sourceDetail, ...rest } = fields;
   const body: Record<string, unknown> = definedOnly(rest as Record<string, unknown>);
   if (type !== undefined) body.leadType = type;

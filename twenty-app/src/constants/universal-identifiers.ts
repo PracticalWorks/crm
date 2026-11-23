@@ -45,7 +45,12 @@ export const PERSON_OUTREACH_FIELDS = {
 export const LOGIC_FUNCTIONS = {
   opportunityOpened: '340790fe-9b1f-4b18-a98b-3f79f5d42928',
   opportunityChanged: '684adc1c-03ac-4e09-8149-fbfec7daaa93',
+  logLead: '88ac2997-3b64-49df-a1c3-fad890a29184',
 } as const;
+
+/** The command-menu form that logs a lead by hand. */
+export const LOG_LEAD_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER = 'b7331292-dd42-48a0-9844-dcc4ff0a8056';
+export const LOG_LEAD_COMMAND_MENU_ITEM_UNIVERSAL_IDENTIFIER = '859c4640-8ef5-40ec-83c7-1603d2f7f5d2';
 export const APPLICATION_VARIABLES = {
   inngestEventUrl: 'b8365c01-6ef2-44b4-bbba-8292ace01578',
   inngestEventKey: 'e101178b-87b4-4191-92ed-3f0a294330bc',
@@ -60,4 +65,39 @@ export const VIEWS = {
   typeProductSignup: '3fb9cc7d-3828-4bfd-93d5-717f8778b8e0',
   typePartner: '6c890cb4-098c-4cf9-953f-e97c22887e04',
   outreach: '36470b11-0ef5-4078-8a3d-87846a8fa3db',
+} as const;
+
+// ─── The triage panel ───
+// Kept in one block so the next card in these files merges cleanly.
+
+/** Brand fields: one floor rate per lead Type, keyed by the Type's value. */
+export const BRAND_FLOOR_RATE_FIELDS = {
+  PROJECT: 'f71ba65e-6e78-4f9f-9eb9-4d1413ad1d8c',
+  CONTRACT_SEAT: 'bd1ea7f8-1096-449b-8eeb-4f4507980dbf',
+  JOB_APPLICATION: 'edaa44a8-d955-4f02-aa9b-5cd590dc417c',
+  PRODUCT_SIGNUP: '3c340f8f-9b0c-4f6b-8696-7b35814e012e',
+  PARTNER: '63d5e5fc-6ab2-4f8e-9b19-7a8b671669a1',
+} as const;
+/** Opportunity fields the triage panel writes. */
+export const TRIAGE_OPPORTUNITY_FIELDS = {
+  triageChecks: '93b5a8aa-bee2-498e-a28a-e14b17f9f33c',
+  fullScope: 'b9620d60-f3d3-4e88-8c7b-2308a18a18d4',
+} as const;
+export const TRIAGE_LOGIC_FUNCTIONS = {
+  triageLead: '6e75bc08-5d19-4288-8123-8d38a9b8baa1',
+  startScope: '168dc567-52cd-4bbc-8c18-5db1a5dc4a3e',
+} as const;
+export const TRIAGE_PANEL_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER = '5f5746a5-e809-4257-ae1e-75d46ef3f976';
+export const TRIAGE_PANEL_WIDGET_UNIVERSAL_IDENTIFIER = '400e54eb-c20d-49a3-87e0-31306655e865';
+
+// ─── The lead warden ───
+
+/** The Task field that marks a warden task with the rule that opened it. */
+export const WARDEN_TASK_FIELDS = {
+  wardenRule: '93f7d869-27c7-4e3d-a244-698c68e7acd3',
+} as const;
+export const WARDEN_LOGIC_FUNCTIONS = {
+  sweep: '6891348e-b393-497e-9e2a-2c4507090f78',
+  leadCreated: '028dbce5-ef86-40ab-b71f-89ac12c5cdaf',
+  leadUpdated: '7474feec-cfd0-4b51-873f-dce98e05cfb0',
 } as const;

@@ -16,6 +16,7 @@
 
 import { LEAD_STAGE_LABELS, LEAD_STAGES } from '../lead-record.ts';
 import type { OpportunityEvent } from '../../../packages/client/src/events.ts';
+import { twentyRest } from '../rest';
 
 export type DeliveryConfig = {
   /** INNGEST_EVENT_URL: the Inngest server's base URL, set in the app's settings. */
@@ -121,22 +122,14 @@ export async function deliver(
 
 /** Creates the failure Task on the Opportunity, through Twenty's REST API with the app's own token. */
 export function restNotifier(apiUrl: string | undefined, token: string | undefined, fetchFn: typeof fetch) {
+  const call = twentyRest(apiUrl, token, fetchFn);
   return async (notice: FailureNotice): Promise<void> => {
-    if (!apiUrl || !token) throw new Error('no TWENTY_API_URL or app token in the run');
-    const call = async (path: string, body: Record<string, unknown>) => {
-      const res = await fetchFn(`${apiUrl.replace(/\/+$/, '')}/rest/${path}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(`POST /rest/${path} answered ${res.status}`);
-      return (await res.json()) as { data?: Record<string, { id?: string }> };
-    };
     const task: Record<string, unknown> = { title: notice.title, status: 'TODO', dueAt: new Date().toISOString() };
     if (notice.ownerId) task.assigneeId = notice.ownerId;
-    const created = await call('tasks', task);
+    const created = await call<{ data?: Record<string, { id?: string }> }>('POST', 'tasks', task);
     const taskId = created.data?.createTask?.id;
     if (!taskId) throw new Error('task create returned no id');
-    await call('taskTargets', { taskId, opportunityId: notice.opportunityId });
+    // `targetOpportunityId`, the morph relation's join column in Twenty 2.x; a bare `opportunityId` is a 400.
+    await call('POST', 'taskTargets', { taskId, targetOpportunityId: notice.opportunityId });
   };
 }

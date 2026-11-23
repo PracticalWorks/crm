@@ -11,7 +11,7 @@ Twenty is an open-source CRM with a good API. This repo is what we built so the 
 | Part | Use it when |
 |---|---|
 | [**`@practicalworks/crm`**](packages/client) | You want typed, tested calls for companies, people, notes, tasks and opportunities, behind one `CrmPort` interface you can fake in tests. It looks people up by email or phone the way an inbox needs, and stores North American phone numbers the way Twenty expects them. |
-| [**`twenty-app/`**](twenty-app) | You want your pipeline's shape in code review, not hand-made in settings: custom objects and fields, select options and views, applied with Twenty's app tooling. It also sends `crm/opportunity.*` events to [Inngest](https://www.inngest.com) when a lead opens, moves or closes. |
+| [**`twenty-app/`**](twenty-app) | You want your pipeline's shape in code review, not hand-made in settings: custom objects and fields, select options and views, applied with Twenty's app tooling. It also sends `crm/opportunity.*` events to [Inngest](https://www.inngest.com) when a lead opens, moves or closes, and adds **Log a lead** to the command menu: paste a posting link, pick Brand, Source and Type, and it opens the Opportunity, or names the one that already has that link. Other callers post the same fields to the app route `/s/leads/log`. Each Opportunity page also gets a **Triage** panel: the five checks as yes/no, the Brand's floor rate for the lead's Type (set per Brand in Twenty, never in this repo), and the verdict with its pass reason saved in one step (`/s/leads/triage`). It can also start a full scope (`/s/leads/scope`), marked cold when the lead has not reached Engaged. |
 
 ## Quick start
 
