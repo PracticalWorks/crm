@@ -129,6 +129,7 @@ export function restNotifier(apiUrl: string | undefined, token: string | undefin
     const created = await call<{ data?: Record<string, { id?: string }> }>('POST', 'tasks', task);
     const taskId = created.data?.createTask?.id;
     if (!taskId) throw new Error('task create returned no id');
-    await call('POST', 'taskTargets', { taskId, opportunityId: notice.opportunityId });
+    // `targetOpportunityId`, the morph relation's join column in Twenty 2.x; a bare `opportunityId` is a 400.
+    await call('POST', 'taskTargets', { taskId, targetOpportunityId: notice.opportunityId });
   };
 }
