@@ -361,6 +361,92 @@ describe("CrmClient.addNote", () => {
     const client = new CrmClient(CONFIG, makeFetch([], () => ({ data: {} })));
     await expect(client.addNote("comp_1", { body: "x" })).rejects.toThrow(/no id/);
   });
+
+  const noteFetch = (calls: Call[]) =>
+    makeFetch(calls, (url) => (url.endsWith("/notes") ? { data: { id: "note1" } } : { data: { id: "nt1" } }));
+
+  it("links a note to a Person through targetPersonId, for a lead with no Company", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, noteFetch(calls));
+    const ref = await client.addNote({ personId: "person_1" }, { title: "Closed", body: "No reply after 3 follow-ups" });
+    expect(calls[0].body).toEqual({ title: "Closed", bodyV2: { markdown: "No reply after 3 follow-ups" } });
+    expect(calls[1]).toMatchObject({
+      url: "https://twenty.test/rest/noteTargets",
+      method: "POST",
+      body: { noteId: "note1", targetPersonId: "person_1" },
+    });
+    expect(ref).toEqual({ id: "note1", personId: "person_1" });
+  });
+
+  it("sends { companyId } exactly as it sends a bare company id", async () => {
+    const bare: Call[] = [];
+    const named: Call[] = [];
+    await new CrmClient(CONFIG, noteFetch(bare)).addNote("comp_1", { body: "Held the fee" });
+    const ref = await new CrmClient(CONFIG, noteFetch(named)).addNote({ companyId: "comp_1" }, { body: "Held the fee" });
+    expect(named).toEqual(bare);
+    expect(ref).toEqual({ id: "note1", companyId: "comp_1" });
+  });
+
+  it.each([
+    ["neither", {}],
+    ["both", { companyId: "comp_1", personId: "person_1" }],
+    ["an empty id", { personId: "" }],
+  ])("refuses a target naming %s, before writing a note nothing would link", async (_name, target) => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, noteFetch(calls));
+    await expect(client.addNote(target as { personId: string }, { body: "x" })).rejects.toThrow(/one Company or one Person/);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("CrmClient.listNotes — a Company's or a Person's notes, newest first", () => {
+  const rows = {
+    data: {
+      noteTargets: [
+        { id: "nt1", note: { id: "note_old", title: "Intro call", bodyV2: { markdown: "Wants a quote" }, createdAt: "2026-10-01T10:00:00Z" } },
+        { id: "nt2", noteId: "note_lost" },
+        { id: "nt3", note: { id: "note_new", title: "Follow-up", bodyV2: { markdown: "" }, createdAt: "2026-11-01T10:00:00Z" } },
+      ],
+    },
+  };
+
+  it("reads a Company's notes through noteTargets, the join listTasks uses, newest first", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => rows));
+    const notes = await client.listNotes({ companyId: "comp_1" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("GET");
+    expect(calls[0].url).toBe("https://twenty.test/rest/noteTargets?filter=targetCompanyId[eq]:comp_1&depth=1&limit=50");
+    expect(notes).toEqual([
+      { id: "note_new", companyId: "comp_1", title: "Follow-up", body: null, createdAt: "2026-11-01T10:00:00Z" },
+      { id: "note_old", companyId: "comp_1", title: "Intro call", body: "Wants a quote", createdAt: "2026-10-01T10:00:00Z" },
+    ]);
+  });
+
+  it("reads a Person's notes through targetPersonId, with a caller's limit", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => rows));
+    const notes = await client.listNotes({ personId: "person 1", limit: 5 });
+    expect(calls[0].url).toBe("https://twenty.test/rest/noteTargets?filter=targetPersonId[eq]:person%201&depth=1&limit=5");
+    expect(notes.map((n) => n.id)).toEqual(["note_new", "note_old"]);
+    expect(notes[0]).toMatchObject({ personId: "person 1" });
+    expect(notes[0]).not.toHaveProperty("companyId");
+  });
+
+  it("returns [] when Twenty answers with no list", async () => {
+    const client = new CrmClient(CONFIG, makeFetch([], () => ({ data: {} })));
+    expect(await client.listNotes({ companyId: "comp_1" })).toEqual([]);
+  });
+
+  it("refuses a target naming neither or both, without a request", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => rows));
+    await expect(client.listNotes({} as { companyId: string })).rejects.toThrow(/one Company or one Person/);
+    await expect(
+      client.listNotes({ companyId: "comp_1", personId: "person_1" } as unknown as { companyId: string }),
+    ).rejects.toThrow(/one Company or one Person/);
+    expect(calls).toHaveLength(0);
+  });
 });
 
 describe("CrmClient tasks — the durable half of anything scheduled", () => {

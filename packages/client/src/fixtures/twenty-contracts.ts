@@ -120,3 +120,31 @@ export const workspaceMemberListResponse = {
   pageInfo: { hasNextPage: false, startCursor: "cur-0", endCursor: "cur-1" },
   totalCount: 1,
 } as const;
+
+export const noteTargetListResponse = {
+  data: {
+    noteTargets: [
+      {
+        id: "notetarget_51a0",
+        noteId: "note_51a0",
+        targetPersonId: "person_sam",
+        targetCompanyId: null,
+        targetOpportunityId: null,
+        createdAt: "2026-11-02T15:04:05.000Z",
+        note: {
+          id: "note_51a0",
+          title: "Closed after 3 follow-ups",
+          bodyV2: {
+            blocknote: '[{"type":"paragraph","content":[{"type":"text","text":"No reply to the third follow-up"}]}]',
+            markdown: "No reply to the third follow-up",
+          },
+          position: 0,
+          createdAt: "2026-11-02T15:04:04.000Z",
+          updatedAt: "2026-11-02T15:04:04.000Z",
+        },
+      },
+    ],
+  },
+  pageInfo: { hasNextPage: false, startCursor: "cur-0", endCursor: "cur-1" },
+  totalCount: 1,
+} as const;

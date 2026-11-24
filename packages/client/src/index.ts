@@ -7,7 +7,7 @@ export {
   type PersonLane,
   type PersonMatch,
 } from "./client.js";
-export type { CrmPort, LeadFields, LeadRecordPort, WorkspaceMemberPort } from "./port.js";
+export type { CrmNoteTarget, CrmPort, LeadFields, LeadRecordPort, NotePort, WorkspaceMemberPort } from "./port.js";
 export {
   OPPORTUNITY_EVENTS,
   OPPORTUNITY_WATCHED_FIELDS,

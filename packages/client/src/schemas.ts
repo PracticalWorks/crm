@@ -27,10 +27,20 @@ export const CrmCompanyRef = z.object({
 });
 export type CrmCompanyRef = z.infer<typeof CrmCompanyRef>;
 
-/** A relationship note written to a company. */
+/**
+ * A relationship note on a company or a person. It carries the one target it was
+ * written to or read through, so a Person's note has no `companyId`. Absent is
+ * not "none": a note may hang off more targets than the one asked about. A note
+ * read back (`listNotes`) also carries its title, its markdown body (null when it
+ * has none) and when it was written.
+ */
 export const CrmNoteRef = z.object({
   id: z.string().min(1),
-  companyId: z.string().min(1),
+  companyId: z.string().min(1).optional(),
+  personId: z.string().min(1).optional(),
+  title: z.string().optional(),
+  body: z.string().nullable().optional(),
+  createdAt: z.string().nullable().optional(),
 });
 export type CrmNoteRef = z.infer<typeof CrmNoteRef>;
 

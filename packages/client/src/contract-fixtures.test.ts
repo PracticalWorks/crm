@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CrmClient } from "./client.js";
 import {
+  noteTargetListResponse,
   opportunityCreateResponse,
   opportunityListResponse,
   opportunityUpdateResponse,
@@ -138,6 +139,22 @@ describe("CrmClient Twenty task body and workspace member contracts", () => {
       { id: "member_jo", name: "Jo Rivera", email: "jo@harbor.example" },
     ]);
     expect(calls[0]).toMatchObject({ url: "https://twenty.test/rest/workspaceMembers?limit=200", method: "GET" });
+  });
+});
+
+describe("CrmClient Twenty note contracts", () => {
+  it("lifts a Person's note off an expanded noteTarget, its text from bodyV2 markdown", async () => {
+    const client = new CrmClient(config, fixtureFetch([], () => noteTargetListResponse));
+
+    await expect(client.listNotes({ personId: "person_sam" })).resolves.toEqual([
+      {
+        id: "note_51a0",
+        personId: "person_sam",
+        title: "Closed after 3 follow-ups",
+        body: "No reply to the third follow-up",
+        createdAt: "2026-11-02T15:04:04.000Z",
+      },
+    ]);
   });
 });
 

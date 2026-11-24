@@ -41,7 +41,9 @@ The base URL is injected by the caller. The API key is a secret passed in at con
   - `findPeople` returns `lane`, null for People written before the field existed.
   - Both are Twenty custom fields. Twenty stores a SELECT option in UPPER_SNAKE, so the client writes `CLIENT` and reads `client`.
   - Create the fields once per workspace, dry run by default: `pnpm --filter @practicalworks/crm exec tsx src/ensure-person-fields-cli.ts [--apply]` (env `TWENTY_API_KEY`, `TWENTY_BASE_URL`). It creates only what is missing, and refuses without writing a field that exists with the wrong type or a `lane` missing an option.
-- **Notes:** written as `bodyV2.markdown` and linked to a company through `noteTargets`.
+- **Notes:**
+  - `addNote` writes the text as `bodyV2.markdown` and links it through `noteTargets` to a company (a bare company id, or `{ companyId }`) or to a person (`{ personId }`), so a contact with no company still gets its record.
+  - `listNotes({ companyId })` or `listNotes({ personId })` reads them back through the same join, newest first, each with its `title`, markdown `body` (null when empty) and `createdAt`.
 - **Tasks:**
   - `createTask` takes an optional `assigneeId`, which must be a Twenty **WorkspaceMember id**, not a Person id.
   - `createTask` takes an optional `body` in markdown, written as `bodyV2` like a note's. A task read back carries it as `body`: null when the task has none. A call without a body sends exactly what it did before.
@@ -51,7 +53,7 @@ The base URL is injected by the caller. The API key is a secret passed in at con
 
 ## Types
 
-`CrmPort` is the interface the client implements, with `LeadRecordPort` and `WorkspaceMemberPort` beside it. `CrmCompanyRef`, `CrmPersonRef`, `CrmNoteRef`, `CrmTaskRef`, `CrmOpportunityRef` and `CrmWorkspaceMemberRef` are zod schemas, each with its inferred type of the same name.
+`CrmPort` is the interface the client implements, with `LeadRecordPort`, `WorkspaceMemberPort` and `NotePort` beside it. `CrmNoteTarget` names a note's company or person. `CrmCompanyRef`, `CrmPersonRef`, `CrmNoteRef`, `CrmTaskRef`, `CrmOpportunityRef` and `CrmWorkspaceMemberRef` are zod schemas, each with its inferred type of the same name.
 
 ## Opportunity events
 
