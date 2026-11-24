@@ -1,5 +1,5 @@
 import { LEAD_STAGES, type LeadLink, type LeadOutcome, type LeadStep } from "./lead-record.js";
-import type { CrmPort, LeadFields, LeadRecordPort, WorkspaceMemberPort } from "./port.js";
+import type { CrmNoteTarget, CrmPort, LeadFields, LeadRecordPort, NotePort, WorkspaceMemberPort } from "./port.js";
 import type {
   CrmBrandRef,
   CrmCompanyRef,
@@ -67,6 +67,24 @@ function extractPeopleRaw(raw: unknown): any[] {
   const records = (raw as { records?: unknown[] } | null)?.records;
   if (Array.isArray(records)) return records;
   return [];
+}
+
+/**
+ * The noteTarget join column for a note's one target. Twenty 2.x links a target
+ * through a morph relation, so the columns are `targetCompanyId` and
+ * `targetPersonId`; a plain `companyId` is a 400. Throws, before anything is
+ * written, unless the target names exactly one Company or one Person.
+ */
+function noteTarget(target: string | CrmNoteTarget): {
+  column: "targetCompanyId" | "targetPersonId";
+  id: string;
+  ref: { companyId: string } | { personId: string };
+} {
+  if (typeof target === "string") return { column: "targetCompanyId", id: target, ref: { companyId: target } };
+  const { companyId, personId } = target as { companyId?: string; personId?: string };
+  if (companyId && !personId) return { column: "targetCompanyId", id: companyId, ref: { companyId } };
+  if (personId && !companyId) return { column: "targetPersonId", id: personId, ref: { personId } };
+  throw new Error("crm note target must name one Company or one Person");
 }
 
 function toPersonRef(raw: any): CrmPersonRef {
@@ -210,7 +228,7 @@ function allPhones(raw: any): string[] {
   return [raw?.phones?.primaryPhoneNumber ?? raw?.phone ?? "", ...more].filter(Boolean);
 }
 
-export class CrmClient implements CrmPort, LeadRecordPort, WorkspaceMemberPort {
+export class CrmClient implements CrmPort, LeadRecordPort, WorkspaceMemberPort, NotePort {
   private readonly root: string;
   private readonly api: string;
 
@@ -444,7 +462,8 @@ export class CrmClient implements CrmPort, LeadRecordPort, WorkspaceMemberPort {
     return result;
   }
 
-  async addNote(companyId: string, note: { title?: string; body: string }): Promise<CrmNoteRef> {
+  async addNote(target: string | CrmNoteTarget, note: { title?: string; body: string }): Promise<CrmNoteRef> {
+    const { column, id, ref } = noteTarget(target);
     const title = note.title ?? (note.body.length > 60 ? `${note.body.slice(0, 57)}...` : note.body);
     // The note entity has no `body` field: its text is `bodyV2`, a RICH_TEXT_V2
     // composite. `markdown` alone is accepted and the workspace derives the
@@ -453,11 +472,32 @@ export class CrmClient implements CrmPort, LeadRecordPort, WorkspaceMemberPort {
     const created = await this.request("POST", "/notes", { title, bodyV2: { markdown: note.body } });
     const noteId = unwrap(created, "createNote", "note")?.id;
     if (!noteId) throw new Error("crm note create returned no id");
-    // Twenty 2.x links a target through a morph relation: the join column is
-    // `targetCompanyId`. A plain `companyId` is a 400, "Object noteTarget doesn't
-    // have any companyId field".
-    await this.request("POST", "/noteTargets", { noteId, targetCompanyId: companyId });
-    return { id: String(noteId), companyId };
+    await this.request("POST", "/noteTargets", { noteId, [column]: id });
+    return { id: String(noteId), ...ref };
+  }
+
+  /**
+   * A company's or a person's notes, newest first. A note, like a task, holds no
+   * target of its own: the link is a `noteTarget` join row, so this reads that
+   * target's rows and lifts the note off each, dropping a row whose note did not
+   * come back expanded.
+   */
+  async listNotes(input: CrmNoteTarget & { limit?: number }): Promise<CrmNoteRef[]> {
+    const { column, id, ref } = noteTarget(input);
+    const filter = `${column}[eq]:${encodeURIComponent(id)}`;
+    const res = await this.request("GET", `/noteTargets?filter=${filter}&depth=1&limit=${input.limit ?? 50}`);
+    const list = unwrap(res, "noteTargets");
+    return (Array.isArray(list) ? list : [])
+      .map((row) => row?.note)
+      .filter((note) => note?.id)
+      .map((note) => ({
+        id: String(note.id),
+        ...ref,
+        title: note.title ?? "",
+        body: note.bodyV2?.markdown || null,
+        createdAt: note.createdAt ?? null,
+      }))
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
   }
 
   // --- Tasks: the durable half of anything scheduled -----------------------

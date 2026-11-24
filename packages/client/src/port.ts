@@ -28,6 +28,13 @@ export interface LeadFields {
 }
 
 /**
+ * Where a note hangs: one Company or one Person. A Person needs no Company, so a
+ * lead on a free-mail address still gets its record. `addNote` also takes a bare
+ * string, which is a Company id.
+ */
+export type CrmNoteTarget = { companyId: string; personId?: never } | { personId: string; companyId?: never };
+
+/**
  * The relationship side of a client: the CRM (Twenty) holds who a client is and
  * the log of what happened with them. Implemented by `CrmClient`; any runtime that
  * needs client relations depends on this port instead of standing up its own
@@ -48,8 +55,11 @@ export interface CrmPort {
     email?: string;
     phone?: string;
   }): Promise<CrmPersonRef>;
-  /** Append a relationship note to a company (what happened / what was agreed). */
-  addNote(companyId: string, note: { title?: string; body: string }): Promise<CrmNoteRef>;
+  /**
+   * Append a relationship note (what happened / what was agreed) to a company, by
+   * its id, or to `{ companyId }` or `{ personId }`.
+   */
+  addNote(target: string | CrmNoteTarget, note: { title?: string; body: string }): Promise<CrmNoteRef>;
   /** The deep-link a teammate opens to see a company's record. */
   companyUrl(companyId: string): string;
 
@@ -138,4 +148,13 @@ export interface LeadRecordPort {
 export interface WorkspaceMemberPort {
   /** Every workspace member, read fresh: the ids `assigneeId` and `ownerId` take, with each name and login email. */
   listWorkspaceMembers(): Promise<CrmWorkspaceMemberRef[]>;
+}
+
+/**
+ * Reading notes back. Kept apart from `CrmPort`, as `WorkspaceMemberPort` is, so
+ * the existing implementers of that port keep compiling.
+ */
+export interface NotePort {
+  /** A company's or a person's notes, newest first, each with its title, body and creation time. */
+  listNotes(input: CrmNoteTarget & { limit?: number }): Promise<CrmNoteRef[]>;
 }
