@@ -4,7 +4,8 @@ import { WARDEN_LOGIC_FUNCTIONS } from '../constants/universal-identifiers';
 import { appRest, kvCursor } from './run';
 import { sweep } from './warden';
 
-// Every 10 minutes, one page of open leads: the age rules need no edit to fire.
+// Every 10 minutes, one page of open leads and of closed ones missing Outcome or Scoping
+// hours: the age rules need no edit to fire.
 export default defineLogicFunction({
   universalIdentifier: WARDEN_LOGIC_FUNCTIONS.sweep,
   name: 'lead-warden-sweep',
