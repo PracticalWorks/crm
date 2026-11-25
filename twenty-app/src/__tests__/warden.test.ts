@@ -62,8 +62,8 @@ function twenty(opportunities: Row[], seed: { tasks?: Row[]; targets?: Row[]; no
       const needle = filter.match(/"%(.*)%"/)![1]!;
       return ok({ opportunities: opportunities.filter((o) => (o.sourceDetail?.primaryLinkUrl ?? '').includes(needle)) });
     }
-    if (method === 'GET' && path === 'opportunities' && filter === `stage[neq]:${LEAD_STAGES.CLOSED}`) {
-      const open = opportunities.filter((o) => o.stage !== LEAD_STAGES.CLOSED);
+    if (method === 'GET' && path === 'opportunities' && filter === `or(stage[neq]:${LEAD_STAGES.CLOSED},outcome[is]:NULL,scopingHours[is]:NULL)`) {
+      const open = opportunities.filter((o) => o.stage !== LEAD_STAGES.CLOSED || o.outcome == null || o.scopingHours == null);
       const limit = Number(u.searchParams.get('limit'));
       const after = u.searchParams.get('starting_after');
       const start = after ? open.findIndex((o) => o.id === after) + 1 : 0;
@@ -236,6 +236,52 @@ describe('an incomplete lead', () => {
   });
 });
 
+describe('a closed lead', () => {
+  const closed = (fields: Row = {}) => lead({ stage: LEAD_STAGES.CLOSED, outcome: null, scopingHours: null, ...fields });
+
+  it('gets one Task naming Outcome and Scoping hours when it closes with neither, and none of the open-lead rules', async () => {
+    const opp = closed({ brandId: null, createdAt: at(MON) });
+    const t = twenty([opp]);
+    expect((await reconcileLead(opp, t.rest, new Date(at(THU2))))).toEqual({ opened: ['CLOSED_INCOMPLETE'], closed: [] });
+    expect(t.tasks).toHaveLength(1);
+    expect(t.tasks[0]).toMatchObject({ title: 'Set Outcome and Scoping hours on "Shopify rebuild": it is Closed', wardenRule: 'CLOSED_INCOMPLETE', assigneeId: 'member-1' });
+  });
+
+  it('names only the field still missing', async () => {
+    const noHours = closed({ outcome: 'LOST' });
+    const t1 = twenty([noHours]);
+    await reconcileLead(noHours, t1.rest, new Date(at(MON, '10:00')));
+    expect(t1.tasks[0]!.title).toBe('Set Scoping hours on "Shopify rebuild": it is Closed');
+
+    const noOutcome = closed({ scopingHours: 0 });
+    const t2 = twenty([noOutcome]);
+    await reconcileLead(noOutcome, t2.rest, new Date(at(MON, '10:00')));
+    expect(t2.tasks[0]!.title).toBe('Set Outcome on "Shopify rebuild": it is Closed');
+  });
+
+  it('opens no second Task while the first is open, and closes it once both are set', async () => {
+    const opp = closed();
+    const t = twenty([opp]);
+    await reconcileLead(opp, t.rest, new Date(at(MON, '10:00')));
+    expect((await reconcileLead(opp, t.rest, new Date(at(TUE))))).toEqual({ opened: [], closed: [] });
+    opp.outcome = 'WON';
+    expect((await reconcileLead(opp, t.rest, new Date(at(TUE, '10:00'))))).toEqual({ opened: [], closed: [] });
+    opp.scopingHours = 2.5;
+    expect((await reconcileLead(opp, t.rest, new Date(at(TUE, '11:00'))))).toEqual({ opened: [], closed: ['CLOSED_INCOMPLETE'] });
+    expect(t.tasks).toHaveLength(1);
+  });
+
+  it('gets none when it carries both, zero hours included', async () => {
+    const opp = closed({ outcome: 'NO_REPLY', scopingHours: 0 });
+    expect((await reconcileLead(opp, twenty([opp]).rest, new Date(at(THU2)))).opened).toEqual([]);
+  });
+
+  it('is reached on the moving event, read fresh by id', async () => {
+    const t = twenty([closed({ outcome: 'WON' })]);
+    expect((await reconcileLeadById('opp-1', t.rest, new Date(at(MON, '10:00')))).opened).toEqual(['CLOSED_INCOMPLETE']);
+  });
+});
+
 describe('a link logged twice', () => {
   it('puts one Task on the later lead, naming the earlier, matching the link as the log-lead form does', async () => {
     const first = lead({ id: 'opp-a', name: 'First', sourceDetail: { primaryLinkUrl: 'https://www.upwork.com/jobs/~01abc/' } });
@@ -275,7 +321,7 @@ describe('the warden', () => {
   });
 
   it('closes every open warden Task once the lead is closed, and leaves other Tasks alone', async () => {
-    const opp = lead({ brandId: null, stage: LEAD_STAGES.CLOSED });
+    const opp = lead({ brandId: null, stage: LEAD_STAGES.CLOSED, outcome: 'WON', scopingHours: 3 });
     const t = twenty([opp], {
       tasks: [
         { id: 'w', status: 'TODO', wardenRule: 'MISSING_BRAND_OR_SOURCE', createdAt: at(MON) },
@@ -337,9 +383,10 @@ describe('the sweep', () => {
     return { saved, get: async () => at, set: async (v) => void saved.push((at = v)) };
   };
 
-  it('works one page of open leads per run from the stored cursor, and starts a new lap after the last', async () => {
-    const leads = ['a', 'b', 'c'].map((id) => lead({ id }));
-    leads.push(lead({ id: 'closed', stage: LEAD_STAGES.CLOSED }));
+  it('works one page of open or incompletely closed leads per run from the stored cursor, and starts a new lap after the last', async () => {
+    const leads = ['a', 'b'].map((id) => lead({ id }));
+    leads.push(lead({ id: 'closed', stage: LEAD_STAGES.CLOSED, outcome: 'WON', scopingHours: 1 }));
+    leads.push(lead({ id: 'c', stage: LEAD_STAGES.CLOSED, outcome: 'WON', scopingHours: null }));
     const t = twenty(leads);
     const cursor = memory();
     const now = new Date(at(THU2));
@@ -347,11 +394,8 @@ describe('the sweep', () => {
     expect(await sweep(t.rest, cursor, now, 2)).toEqual({ leads: 1, opened: 1, closed: 0, next: null });
     expect(await sweep(t.rest, cursor, now, 2)).toMatchObject({ leads: 2, opened: 0, next: 'b' });
     expect(cursor.saved).toEqual(['b', null, 'b']);
-    expect(t.calls.filter((c) => c.path.startsWith('opportunities?filter=stage')).map((c) => c.path)).toEqual([
-      'opportunities?filter=stage[neq]:CUSTOMER&depth=1&limit=2',
-      'opportunities?filter=stage[neq]:CUSTOMER&depth=1&limit=2&starting_after=b',
-      'opportunities?filter=stage[neq]:CUSTOMER&depth=1&limit=2',
-    ]);
+    const page = 'opportunities?filter=or(stage[neq]:CUSTOMER,outcome[is]:NULL,scopingHours[is]:NULL)&depth=1&limit=2';
+    expect(t.calls.filter((c) => c.path.startsWith('opportunities?filter=or(')).map((c) => c.path)).toEqual([page, `${page}&starting_after=b`, page]);
   });
 
   it('runs every lead even when one fails, saves the cursor, then fails the run naming the lead', async () => {
@@ -382,7 +426,7 @@ describe('the warden declarations', () => {
     expect(updatedFn.config).toMatchObject({ universalIdentifier: WARDEN_LOGIC_FUNCTIONS.leadUpdated, databaseEventTriggerSettings: { eventName: 'opportunity.updated' } });
   });
 
-  it('mark their Tasks with a Warden rule select holding the four rules', () => {
+  it('mark their Tasks with a Warden rule select holding every rule', () => {
     expect(wardenRuleField.config).toMatchObject({
       universalIdentifier: WARDEN_TASK_FIELDS.wardenRule,
       objectUniversalIdentifier: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.task.universalIdentifier,

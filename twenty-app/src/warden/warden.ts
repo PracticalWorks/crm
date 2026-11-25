@@ -1,5 +1,5 @@
 // The lead warden: select-and-act rules over the lead record, no model. Each rule
-// that holds on an open lead keeps exactly one open Task for the lead's owner, and
+// that holds on a lead keeps exactly one open Task for the lead's owner, and
 // the Task is closed once the rule stops holding. The warden writes Tasks and their
 // targets only: it never writes an Opportunity, so it never moves a stage.
 //
@@ -17,6 +17,7 @@ export const WARDEN_RULES = [
   { value: 'PROPOSAL_QUIET', label: 'Proposal quiet' },
   { value: 'MISSING_BRAND_OR_SOURCE', label: 'Missing Brand or Source' },
   { value: 'DUPLICATE_LINK', label: 'Link logged twice' },
+  { value: 'CLOSED_INCOMPLETE', label: 'Closed without Outcome or Scoping hours' },
 ] as const;
 export type WardenRule = (typeof WARDEN_RULES)[number]['value'];
 
@@ -29,6 +30,8 @@ export type WardenLead = {
   name?: string | null;
   stage?: string | null;
   triageVerdict?: string | null;
+  outcome?: string | null;
+  scopingHours?: number | null;
   source?: string | null;
   brandId?: string | null;
   ownerId?: string | null;
@@ -77,11 +80,18 @@ export type LeadContext = {
   earlier: { id: string; name: string; createdAt?: string } | null;
 };
 
-/** The rules holding on one lead now. A closed lead holds none. */
+/**
+ * The rules holding on one lead now. A closed lead is held to one rule only: it
+ * carries its Outcome and Scoping hours, which rank channels by wins per hour.
+ * Flagged, not refused: the client's close() may leave Scoping hours unset.
+ */
 export function heldRules(lead: WardenLead, ctx: LeadContext, now: Date): Held[] {
-  if (lead.stage === LEAD_STAGES.CLOSED) return [];
-  const held: Held[] = [];
   const created = lead.createdAt ?? '';
+  if (lead.stage === LEAD_STAGES.CLOSED) {
+    const unset = [!present(lead.outcome) && 'Outcome', !Number.isFinite(lead.scopingHours ?? NaN) && 'Scoping hours'].filter(Boolean);
+    return unset.length === 0 ? [] : [{ rule: 'CLOSED_INCOMPLETE', since: created, title: `Set ${unset.join(' and ')} on ${quoted(lead)}: it is Closed` }];
+  }
+  const held: Held[] = [];
   const age = (from: string) => businessDaysBetween(new Date(from), now);
 
   if (!isTriaged(lead) && age(created) > UNTRIAGED_DAYS) {
@@ -109,6 +119,7 @@ const BODY: Record<WardenRule, string> = {
   PROPOSAL_QUIET: 'Nothing has happened on this lead since the proposal. Follow up, and log a note: the task closes itself on the next touch.',
   MISSING_BRAND_OR_SOURCE: 'Every lead carries its Brand and Source. This task closes itself once both are set.',
   DUPLICATE_LINK: 'The same posting is logged as two leads. Keep one; this task closes itself once the link is on one lead only.',
+  CLOSED_INCOMPLETE: 'Channels are ranked by wins per scoping hour, so a closed lead carries how it ended and the hours spent scoping. This task closes itself once both are set.',
 };
 
 async function rows<T>(rest: TwentyRest, path: string, key: string): Promise<T[]> {
@@ -203,14 +214,15 @@ export type CursorStore = { get(): Promise<string | null>; set(after: string | n
 export type SweepResult = { leads: number; opened: number; closed: number; next: string | null };
 
 /**
- * The cron path: one page of open leads per run, resuming from the stored cursor
+ * The cron path: one page of leads per run, open or closed without Outcome or
+ * Scoping hours, resuming from the stored cursor
  * and starting a new lap after the last page, so age-based rules fire with no edit
  * to set them off. A lead that fails is named and the rest still run; the run then
  * fails, after the cursor is saved, so the failure shows without stalling the lap.
  */
 export async function sweep(rest: TwentyRest, cursor: CursorStore, now: Date, pageSize = 30): Promise<SweepResult> {
   const after = await cursor.get();
-  const filter = encodeURIComponent(`stage[neq]:${LEAD_STAGES.CLOSED}`);
+  const filter = encodeURIComponent(`or(stage[neq]:${LEAD_STAGES.CLOSED},outcome[is]:NULL,scopingHours[is]:NULL)`);
   const res = await rest<{ data?: { opportunities?: WardenLead[] }; pageInfo?: { hasNextPage?: boolean; endCursor?: string | null } }>(
     'GET',
     `opportunities?filter=${filter}&depth=1&limit=${pageSize}${after ? `&starting_after=${encodeURIComponent(after)}` : ''}`,
