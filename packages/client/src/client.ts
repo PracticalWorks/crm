@@ -620,14 +620,20 @@ export class CrmClient implements CrmPort, LeadRecordPort, WorkspaceMemberPort, 
   }
 
   /**
-   * Close a lead: stage Closed, its outcome, the hours spent scoping and the close
-   * date (now unless given). `scopingHours` may be left out when nobody logged them;
-   * the record then shows it missing rather than a made-up zero.
+   * Close a lead: stage Closed, its outcome, the hours spent scoping (0 when none
+   * were) and the close date (now unless given). Twenty refuses a Closed lead
+   * without Outcome or Scoping hours, so this throws before writing when either is
+   * missing.
    */
   async close(
     opportunityId: string,
-    input: { outcome: LeadOutcome; scopingHours?: number; closeDate?: string },
+    input: { outcome: LeadOutcome; scopingHours: number; closeDate?: string },
   ): Promise<CrmOpportunityRef> {
+    const missing = [
+      ...(input.outcome ? [] : ["outcome"]),
+      ...(Number.isFinite(input.scopingHours) ? [] : ["scopingHours"]),
+    ];
+    if (missing.length) throw new Error(`crm close: a Closed lead needs ${missing.join(" and ")}; nothing was written`);
     return this.updateOpportunity(opportunityId, {
       stage: LEAD_STAGES.CLOSED,
       outcome: input.outcome,
