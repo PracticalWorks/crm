@@ -11,6 +11,8 @@ import {
   BRAND_FLOOR_RATE_FIELDS,
   BRAND_OBJECT_UNIVERSAL_IDENTIFIER,
   OPPORTUNITY_FIELDS,
+  OUTREACH_CYCLE_FIELDS,
+  OUTREACH_CYCLE_OBJECT_UNIVERSAL_IDENTIFIER,
   WORKSPACE_MEMBER_BRANDS_FIELD_UNIVERSAL_IDENTIFIER,
 } from '../constants/universal-identifiers';
 import { LEAD_TYPES } from '../lead-record.ts';
@@ -86,6 +88,18 @@ export default defineObject({
       relationTargetObjectMetadataUniversalIdentifier:
         STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.opportunity.universalIdentifier,
       relationTargetFieldMetadataUniversalIdentifier: OPPORTUNITY_FIELDS.brand,
+      universalSettings: {
+        relationType: RelationType.ONE_TO_MANY,
+      },
+    },
+    {
+      universalIdentifier: BRAND_FIELDS.outreachCycles,
+      name: 'outreachCycles',
+      type: FieldType.RELATION,
+      label: 'Outreach cycles',
+      icon: 'IconFlask',
+      relationTargetObjectMetadataUniversalIdentifier: OUTREACH_CYCLE_OBJECT_UNIVERSAL_IDENTIFIER,
+      relationTargetFieldMetadataUniversalIdentifier: OUTREACH_CYCLE_FIELDS.brand,
       universalSettings: {
         relationType: RelationType.ONE_TO_MANY,
       },

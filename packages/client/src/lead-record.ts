@@ -190,3 +190,10 @@ export interface OutreachStatus {
   outreachLastSentAt: string | null;
   outreachState: OutreachState;
 }
+
+/** An outreach cycle's verdict at its end: run the experiment again, or drop it. Empty until decided. */
+export const OUTREACH_CYCLE_VERDICTS = options([
+  { value: "KEEP", label: "Keep" },
+  { value: "KILL", label: "Kill" },
+]);
+export type OutreachCycleVerdict = (typeof OUTREACH_CYCLE_VERDICTS)[number]["value"];
