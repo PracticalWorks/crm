@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CrmClient } from "./client.js";
-import { LEAD_MARKETS, LEAD_OUTCOMES, LEAD_SOURCES, LEAD_STAGES, LEAD_STEPS, LEAD_TYPES, TRIAGE_VERDICTS } from "./lead-record.js";
+import { LEAD_MARKETS, LEAD_OUTCOMES, LEAD_SOURCES, LEAD_STAGES, LEAD_STEPS, LEAD_TYPES, TRIAGE_VERDICTS, WAITING_ON_CHANNELS, type WaitingOnChannel } from "./lead-record.js";
 
 interface Call {
   url: string;
@@ -112,6 +112,44 @@ describe("CrmClient.updateOpportunity with lead fields", () => {
       brandId: null,
       leadLinks: { primaryLinkUrl: "", primaryLinkLabel: "", secondaryLinks: [] },
     });
+  });
+});
+
+describe("CrmClient.updateOpportunity with Waiting-on", () => {
+  it("sets the teammate (waitingOnId), the draft as a LINKS composite and the channel", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { updateOpportunity: { id: "opp_1" } } })));
+    const channel: WaitingOnChannel = "SOCIAL_LEADS";
+    await client.updateOpportunity("opp_1", {
+      waitingOnId: "member_1",
+      waitingOnDraft: { url: "https://app.test/draft/7", label: "reply draft" },
+      waitingOnChannel: channel,
+    });
+    expect(calls[0]).toMatchObject({ url: "https://twenty.test/rest/opportunities/opp_1", method: "PATCH" });
+    expect(calls[0]!.body).toEqual({
+      waitingOnId: "member_1",
+      waitingOnDraft: { primaryLinkUrl: "https://app.test/draft/7", primaryLinkLabel: "reply draft", secondaryLinks: [] },
+      waitingOnChannel: "SOCIAL_LEADS",
+    });
+  });
+
+  it("clears all three: null for the relation and the select, an empty composite for the draft", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { updateOpportunity: { id: "opp_1" } } })));
+    await client.updateOpportunity("opp_1", { waitingOnId: null, waitingOnDraft: null, waitingOnChannel: null });
+    expect(calls[0]!.body).toEqual({
+      waitingOnId: null,
+      waitingOnDraft: { primaryLinkUrl: "", primaryLinkLabel: "", secondaryLinks: [] },
+      waitingOnChannel: null,
+    });
+  });
+
+  it("takes a bare URL as the draft, and the channel values come from WAITING_ON_CHANNELS", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { updateOpportunity: { id: "opp_1" } } })));
+    await client.updateOpportunity("opp_1", { waitingOnDraft: "https://app.test/draft/8" });
+    expect(calls[0]!.body).toEqual({ waitingOnDraft: { primaryLinkUrl: "https://app.test/draft/8", primaryLinkLabel: "", secondaryLinks: [] } });
+    expect(WAITING_ON_CHANNELS.map((c) => c.value)).toEqual(["LEADS", "SOCIAL_LEADS", "STR_MANAGER"]);
   });
 });
 

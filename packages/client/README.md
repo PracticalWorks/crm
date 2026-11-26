@@ -51,6 +51,7 @@ The base URL is injected by the caller. The API key is a secret passed in at con
 - **Workspace members:** `listWorkspaceMembers()` returns each teammate's WorkspaceMember `id`, `name` and login `email`. Those ids are what `assigneeId` and `ownerId` take, so a caller can assign by name.
 - **Opportunities:** they attach directly to companies and carry a stage. `createOpportunity`, `listOpportunities` and `updateOpportunityStage` cover them.
 - **Closing a lead:** `close(id, { outcome, scopingHours, closeDate? })` moves it to Closed. Since 0.17.0 `scopingHours` is required (0 when nobody scoped), and `close` throws before writing when Outcome or Scoping hours is missing, because the Twenty App's validation rules refuse a Closed lead without either.
+- **Waiting on:** since 0.18.0 `updateOpportunity` (and `createOpportunity`) take `waitingOnId` (the WorkspaceMember whose approval the lead waits on), `waitingOnDraft` (a URL, or `{ url, label }`, sent as a LINKS composite) and `waitingOnChannel` (one of `WAITING_ON_CHANNELS`). `null` clears each.
 
 ## Types
 

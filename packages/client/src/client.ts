@@ -837,11 +837,12 @@ function definedOnly<T extends Record<string, unknown>>(patch: T): Partial<T> {
  * composite, which Twenty accepts where it refuses a bare null).
  */
 export function toOpportunityBody(fields: LeadFields & { stage?: string; name?: string; companyId?: string }): Record<string, unknown> {
-  const { type, links, sourceDetail, ...rest } = fields;
+  const { type, links, sourceDetail, waitingOnDraft, ...rest } = fields;
   const body: Record<string, unknown> = definedOnly(rest as Record<string, unknown>);
   if (type !== undefined) body.leadType = type;
   if (sourceDetail !== undefined) body.sourceDetail = toLinks(sourceDetail === null ? [] : [sourceDetail]);
   if (links !== undefined) body.leadLinks = toLinks(links ?? []);
+  if (waitingOnDraft !== undefined) body.waitingOnDraft = toLinks(waitingOnDraft === null ? [] : [waitingOnDraft]);
   return body;
 }
 
