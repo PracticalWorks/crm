@@ -125,8 +125,8 @@ export interface CrmPort {
 export interface LeadRecordPort {
   /** Record the finer step inside the stage. */
   setStep(opportunityId: string, step: LeadStep | null): Promise<CrmOpportunityRef>;
-  /** Stage Closed, with the outcome, the scoping hours and the close date (now unless given). */
-  close(opportunityId: string, input: { outcome: LeadOutcome; scopingHours?: number; closeDate?: string }): Promise<CrmOpportunityRef>;
+  /** Stage Closed, with the outcome, the scoping hours (required, 0 when none) and the close date (now unless given). Throws before writing when either is missing. */
+  close(opportunityId: string, input: { outcome: LeadOutcome; scopingHours: number; closeDate?: string }): Promise<CrmOpportunityRef>;
   /** Every brand record. */
   listBrands(): Promise<CrmBrandRef[]>;
   /** Create the brand with this key, or update the given fields of the one that has it. */
