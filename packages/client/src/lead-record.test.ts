@@ -132,12 +132,23 @@ describe("CrmClient.setStep and close", () => {
     expect(ref).toMatchObject({ stage: "CUSTOMER", outcome: "WON", scopingHours: 3.5 });
   });
 
-  it("close without scoping hours leaves them unset and stamps a close date", async () => {
+  it("close with zero scoping hours writes the zero and stamps a close date", async () => {
     const calls: Call[] = [];
     const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "opp_1" } })));
-    await client.close("opp_1", { outcome: "NO_REPLY" });
-    expect(calls[0]!.body).not.toHaveProperty("scopingHours");
+    await client.close("opp_1", { outcome: "NO_REPLY", scopingHours: 0 });
+    expect(calls[0]!.body.scopingHours).toBe(0);
     expect(calls[0]!.body.closeDate).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("close refuses before writing when scoping hours or outcome are missing, naming each", async () => {
+    const calls: Call[] = [];
+    const client = new CrmClient(CONFIG, makeFetch(calls, () => ({ data: { id: "opp_1" } })));
+    const loose = client.close as (id: string, input: Record<string, unknown>) => Promise<unknown>;
+    await expect(loose.call(client, "opp_1", { outcome: "NO_REPLY" })).rejects.toThrow("a Closed lead needs scopingHours;");
+    await expect(loose.call(client, "opp_1", { outcome: "WON", scopingHours: Number.NaN })).rejects.toThrow("needs scopingHours;");
+    await expect(loose.call(client, "opp_1", { scopingHours: 2 })).rejects.toThrow("a Closed lead needs outcome;");
+    await expect(loose.call(client, "opp_1", {})).rejects.toThrow("needs outcome and scopingHours;");
+    expect(calls).toHaveLength(0);
   });
 });
 

@@ -107,3 +107,9 @@ export const WARDEN_LOGIC_FUNCTIONS = {
   leadCreated: '028dbce5-ef86-40ab-b71f-89ac12c5cdaf',
   leadUpdated: '7474feec-cfd0-4b51-873f-dce98e05cfb0',
 } as const;
+
+/** The validation rules that refuse a Closed lead missing a field channels are ranked by. */
+export const CLOSED_LEAD_VALIDATION_RULES = {
+  outcome: 'a009d6b8-a018-486e-977f-fdf7bb9aa8e4',
+  scopingHours: 'b0002228-6c42-4659-a0c9-20b94bac4ff8',
+} as const;
