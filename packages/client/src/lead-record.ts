@@ -119,6 +119,17 @@ export const LEAD_STAGE_LABELS: Readonly<Record<LeadStageName, string>> = {
 /** A link as a writer gives it: a bare URL, or a URL with the label to show. */
 export type LeadLink = string | { url: string; label?: string };
 
+/**
+ * Where the draft a lead waits on is approved: Opportunity.waitingOnChannel. The
+ * draft is still approved there; the field only says where to look.
+ */
+export const WAITING_ON_CHANNELS = options([
+  { value: "LEADS", label: "#leads" },
+  { value: "SOCIAL_LEADS", label: "#social-leads" },
+  { value: "STR_MANAGER", label: "str-manager" },
+]);
+export type WaitingOnChannel = (typeof WAITING_ON_CHANNELS)[number]["value"];
+
 // ─── Outreach status on People ───
 // Frontdesk's cold-outreach sequences show where each emailed contact is on their
 // Person: visibility only, nothing in Twenty decides a send. The Twenty App declares

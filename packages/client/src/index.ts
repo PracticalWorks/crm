@@ -32,6 +32,7 @@ export {
   OUTREACH_PERSON_FIELDS,
   OUTREACH_STATES,
   TRIAGE_VERDICTS,
+  WAITING_ON_CHANNELS,
   type LeadLink,
   type LeadMarket,
   type LeadOutcome,
@@ -44,5 +45,6 @@ export {
   type OutreachState,
   type OutreachStatus,
   type TriageVerdict,
+  type WaitingOnChannel,
 } from "./lead-record.js";
 export { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef, CrmWorkspaceMemberRef } from "./schemas.js";
