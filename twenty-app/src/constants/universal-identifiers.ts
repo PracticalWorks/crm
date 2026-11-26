@@ -11,9 +11,26 @@ export const BRAND_FIELDS = {
   vaultNote: 'b8f185bb-eaac-479d-8b39-1009d2c5f314',
   goal: '0c59077d-ba2f-40d9-97b5-034da0c06833',
   opportunities: 'acf6d818-86a9-4daa-9887-0f657c554719',
+  outreachCycles: '578ef275-11c9-45da-885f-dbba7f8c1c4c',
 } as const;
 export const BRAND_KEY_UNIQUE_INDEX_UNIVERSAL_IDENTIFIER = '68c60602-948b-4c63-8dac-3ff2ff62e1e6';
 export const BRAND_KEY_UNIQUE_INDEX_FIELD_UNIVERSAL_IDENTIFIER = 'c3508786-25d0-4827-a3c0-99b4cf3a7586';
+
+/** An outreach cycle: a two-week experiment, its enrolled People and the leads it opened. */
+export const OUTREACH_CYCLE_OBJECT_UNIVERSAL_IDENTIFIER = 'd11c4e41-ee40-43dd-8b19-5d5ab071aabc';
+export const OUTREACH_CYCLE_FIELDS = {
+  audience: '4c23ad57-7a99-4561-a704-4ec20c163243',
+  hook: '8c73b572-6411-4efd-8822-de460754dcdc',
+  ask: '65612bed-f8a5-45fa-be05-52ba8900c96d',
+  brand: 'efee909a-a9c2-47b3-90c0-6d29c4bbded5',
+  startDate: '2cbf9ce2-1206-4580-a1f0-bae4198a873b',
+  endDate: '4a68e0e0-1398-4235-9d9f-ca867c9e65b6',
+  verdict: '76f25adb-7ae7-4064-822f-5de8225068ab',
+  people: '6ef0f4ba-daec-4dac-9eaa-30cc161af205',
+  opportunities: '307e6f89-3e24-446c-9096-d785c68de67a',
+} as const;
+/** The reverse side of OutreachCycle.people, on the standard Person object. */
+export const PERSON_OUTREACH_CYCLE_FIELD_UNIVERSAL_IDENTIFIER = '9e7f0ed9-956a-4814-a9b8-b20fd2036ef7';
 
 /** The reverse side of Brand.owner, on the standard WorkspaceMember object. */
 export const WORKSPACE_MEMBER_BRANDS_FIELD_UNIVERSAL_IDENTIFIER = '98e8b426-85a8-4350-87bf-24d071541e0f';
@@ -36,6 +53,7 @@ export const OPPORTUNITY_FIELDS = {
   waitingOn: '0d4882c9-b2d6-44a0-b045-e2e5b4881fb0',
   waitingOnDraft: '6b306bd7-4766-4b04-986f-02812d0c8e7e',
   waitingOnChannel: '5a70ae33-edb0-4c20-9955-253c391ab876',
+  outreachCycle: '702f5b62-ad45-4f6b-af90-0b18c85cc329',
 } as const;
 
 /** Fields this app adds to the standard Person object: frontdesk's outreach status. */
