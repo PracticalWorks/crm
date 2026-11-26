@@ -1,4 +1,4 @@
-import type { LeadLink, LeadMarket, LeadOutcome, LeadSource, LeadStep, LeadType, TriageVerdict } from "./lead-record.js";
+import type { LeadLink, LeadMarket, LeadOutcome, LeadSource, LeadStep, LeadType, TriageVerdict, WaitingOnChannel } from "./lead-record.js";
 import type { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef, CrmWorkspaceMemberRef } from "./schemas.js";
 
 /**
@@ -25,6 +25,12 @@ export interface LeadFields {
   closeDate?: string | null;
   /** Live pages in the app that owns the lead: posting, app page, documents. */
   links?: LeadLink[] | null;
+  /** The teammate whose approval the lead waits on: a WorkspaceMember id. */
+  waitingOnId?: string | null;
+  /** The draft waiting for that approval. */
+  waitingOnDraft?: LeadLink | null;
+  /** Where the draft is approved (see `WAITING_ON_CHANNELS`). */
+  waitingOnChannel?: WaitingOnChannel | null;
 }
 
 /**
