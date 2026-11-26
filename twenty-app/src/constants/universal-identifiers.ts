@@ -17,6 +17,8 @@ export const BRAND_KEY_UNIQUE_INDEX_FIELD_UNIVERSAL_IDENTIFIER = 'c3508786-25d0-
 
 /** The reverse side of Brand.owner, on the standard WorkspaceMember object. */
 export const WORKSPACE_MEMBER_BRANDS_FIELD_UNIVERSAL_IDENTIFIER = '98e8b426-85a8-4350-87bf-24d071541e0f';
+/** The reverse side of Opportunity.waitingOn, on the standard WorkspaceMember object. */
+export const WORKSPACE_MEMBER_WAITING_ON_FIELD_UNIVERSAL_IDENTIFIER = '52d0f958-8627-4c1d-84eb-9a090d76a2ea';
 
 /** Fields this app adds to the standard Opportunity object. */
 export const OPPORTUNITY_FIELDS = {
@@ -31,6 +33,9 @@ export const OPPORTUNITY_FIELDS = {
   scopingHours: '0043eb98-e2b6-46b7-960f-c14ee464d1c5',
   outcome: '182a9eda-8de4-4931-a1b0-ef685ce43ee8',
   leadLinks: 'b5c9d170-9851-4494-8705-d476cfc75980',
+  waitingOn: '0d4882c9-b2d6-44a0-b045-e2e5b4881fb0',
+  waitingOnDraft: '6b306bd7-4766-4b04-986f-02812d0c8e7e',
+  waitingOnChannel: '5a70ae33-edb0-4c20-9955-253c391ab876',
 } as const;
 
 /** Fields this app adds to the standard Person object: frontdesk's outreach status. */
@@ -65,6 +70,7 @@ export const VIEWS = {
   typeProductSignup: '3fb9cc7d-3828-4bfd-93d5-717f8778b8e0',
   typePartner: '6c890cb4-098c-4cf9-953f-e97c22887e04',
   outreach: '36470b11-0ef5-4078-8a3d-87846a8fa3db',
+  waitingOnUs: '907212ba-2ed4-40f8-a83f-4bea5ec1d37f',
 } as const;
 
 // ─── The triage panel ───
