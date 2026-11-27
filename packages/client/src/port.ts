@@ -1,5 +1,5 @@
 import type { LeadLink, LeadMarket, LeadOutcome, LeadSource, LeadStep, LeadType, TriageVerdict, WaitingOnChannel } from "./lead-record.js";
-import type { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef, CrmWorkspaceMemberRef } from "./schemas.js";
+import type { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmOutreachCycleRef, CrmPersonRef, CrmTaskRef, CrmWorkspaceMemberRef } from "./schemas.js";
 
 /**
  * The lead record fields an opportunity carries (see `lead-record.ts` for the
@@ -31,6 +31,8 @@ export interface LeadFields {
   waitingOnDraft?: LeadLink | null;
   /** Where the draft is approved (see `WAITING_ON_CHANNELS`). */
   waitingOnChannel?: WaitingOnChannel | null;
+  /** The Outreach cycle whose email won this reply (see `findOutreachCycle`). */
+  outreachCycleId?: string | null;
 }
 
 /**
@@ -163,4 +165,16 @@ export interface WorkspaceMemberPort {
 export interface NotePort {
   /** A company's or a person's notes, newest first, each with its title, body and creation time. */
   listNotes(input: CrmNoteTarget & { limit?: number }): Promise<CrmNoteRef[]>;
+}
+
+/**
+ * Outreach cycles. Kept apart from `CrmPort`, as `NotePort` is, so the existing
+ * implementers of that port keep compiling.
+ */
+export interface OutreachCyclePort {
+  /**
+   * The cycle with this sequence key whose window holds today (UTC, both ends
+   * inclusive; no end date means still running), or null. Throws when two do.
+   */
+  findOutreachCycle(sequenceKey: string): Promise<CrmOutreachCycleRef | null>;
 }

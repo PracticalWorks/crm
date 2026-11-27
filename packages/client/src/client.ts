@@ -1,10 +1,11 @@
 import { LEAD_STAGES, type LeadLink, type LeadOutcome, type LeadStep } from "./lead-record.js";
-import type { CrmNoteTarget, CrmPort, LeadFields, LeadRecordPort, NotePort, WorkspaceMemberPort } from "./port.js";
+import type { CrmNoteTarget, CrmPort, LeadFields, LeadRecordPort, NotePort, OutreachCyclePort, WorkspaceMemberPort } from "./port.js";
 import type {
   CrmBrandRef,
   CrmCompanyRef,
   CrmNoteRef,
   CrmOpportunityRef,
+  CrmOutreachCycleRef,
   CrmPersonRef,
   CrmTaskRef,
   CrmWorkspaceMemberRef,
@@ -228,7 +229,7 @@ function allPhones(raw: any): string[] {
   return [raw?.phones?.primaryPhoneNumber ?? raw?.phone ?? "", ...more].filter(Boolean);
 }
 
-export class CrmClient implements CrmPort, LeadRecordPort, WorkspaceMemberPort, NotePort {
+export class CrmClient implements CrmPort, LeadRecordPort, WorkspaceMemberPort, NotePort, OutreachCyclePort {
   private readonly root: string;
   private readonly api: string;
 
@@ -688,6 +689,29 @@ export class CrmClient implements CrmPort, LeadRecordPort, WorkspaceMemberPort, 
     return toBrandRef({ ...raw, ...body });
   }
 
+  // --- Outreach cycles: one run of a sequence, found by its key and its dates ---
+
+  /**
+   * The cycle with this key whose window holds today, or null. Twenty narrows by
+   * key; the window is judged here on the YYYY-MM-DD dates, so no date-filter
+   * syntax is involved. Two running cycles of one key is a data error, never a guess.
+   */
+  async findOutreachCycle(sequenceKey: string): Promise<CrmOutreachCycleRef | null> {
+    const key = sequenceKey.trim();
+    if (!key) throw new Error("crm outreach cycle: sequenceKey is required");
+    const filter = encodeURIComponent(`sequenceKey[eq]:"${key}"`);
+    const list = unwrap(await this.request("GET", `/outreachCycles?filter=${filter}&limit=60`), "outreachCycles");
+    const today = new Date().toISOString().slice(0, 10);
+    const running = (Array.isArray(list) ? list : [])
+      .filter((c) => c?.id && c.sequenceKey === key)
+      .map(toOutreachCycleRef)
+      .filter((c) => c.startDate !== null && c.startDate <= today && (c.endDate === null || today <= c.endDate));
+    if (running.length > 1) {
+      throw new Error(`crm outreach cycle: ${running.length} cycles of "${key}" hold ${today}: ${running.map((c) => c.id).join(", ")}`);
+    }
+    return running[0] ?? null;
+  }
+
   async deleteOpportunity(opportunityId: string): Promise<void> {
     await this.request("DELETE", `/opportunities/${opportunityId}`);
   }
@@ -748,6 +772,7 @@ export class CrmClient implements CrmPort, LeadRecordPort, WorkspaceMemberPort, 
       outcome: raw?.outcome,
       closeDate: raw?.closeDate,
       links: raw?.leadLinks === undefined ? undefined : linkUrls(raw.leadLinks),
+      outreachCycleId: raw?.outreachCycleId !== undefined ? raw.outreachCycleId : raw?.outreachCycle?.id,
     };
     return { ...ref, ...definedOnly(lead) };
   }
@@ -882,5 +907,18 @@ function toBrandRef(raw: any): CrmBrandRef {
     ownerId: raw?.ownerId ?? raw?.owner?.id ?? null,
     vaultNote: linkUrls(raw?.vaultNote)[0] ?? null,
     goal: raw?.goal ?? null,
+  };
+}
+
+/** Twenty DATE values are YYYY-MM-DD; a longer timestamp is cut to its day. */
+function toOutreachCycleRef(raw: any): CrmOutreachCycleRef {
+  const day = (v: unknown) => (typeof v === "string" && v ? v.slice(0, 10) : null);
+  return {
+    id: String(raw.id),
+    sequenceKey: raw?.sequenceKey ?? "",
+    brandId: raw?.brandId ?? raw?.brand?.id ?? null,
+    startDate: day(raw?.startDate),
+    endDate: day(raw?.endDate),
+    verdict: raw?.verdict ?? null,
   };
 }

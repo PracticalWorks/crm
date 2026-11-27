@@ -7,7 +7,7 @@ export {
   type PersonLane,
   type PersonMatch,
 } from "./client.js";
-export type { CrmNoteTarget, CrmPort, LeadFields, LeadRecordPort, NotePort, WorkspaceMemberPort } from "./port.js";
+export type { CrmNoteTarget, CrmPort, LeadFields, LeadRecordPort, NotePort, OutreachCyclePort, WorkspaceMemberPort } from "./port.js";
 export {
   OPPORTUNITY_EVENTS,
   OPPORTUNITY_WATCHED_FIELDS,
@@ -49,4 +49,4 @@ export {
   type TriageVerdict,
   type WaitingOnChannel,
 } from "./lead-record.js";
-export { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmPersonRef, CrmTaskRef, CrmWorkspaceMemberRef } from "./schemas.js";
+export { CrmBrandRef, CrmCompanyRef, CrmNoteRef, CrmOpportunityRef, CrmOutreachCycleRef, CrmPersonRef, CrmTaskRef, CrmWorkspaceMemberRef } from "./schemas.js";

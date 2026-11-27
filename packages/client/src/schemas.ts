@@ -112,6 +112,8 @@ export const CrmOpportunityRef = z.object({
   outcome: z.string().nullable().optional(),
   closeDate: z.string().nullable().optional(),
   links: z.array(z.string()).optional(),
+  /** The Outreach cycle whose email won this reply. */
+  outreachCycleId: z.string().nullable().optional(),
 });
 export type CrmOpportunityRef = z.infer<typeof CrmOpportunityRef>;
 
@@ -126,3 +128,17 @@ export const CrmBrandRef = z.object({
   goal: z.string().nullable(),
 });
 export type CrmBrandRef = z.infer<typeof CrmBrandRef>;
+
+/**
+ * An outreach cycle: one run of an outreach sequence, found by its `sequenceKey`.
+ * The dates are Twenty DATE values (YYYY-MM-DD); a null `endDate` is a cycle still running.
+ */
+export const CrmOutreachCycleRef = z.object({
+  id: z.string().min(1),
+  sequenceKey: z.string(),
+  brandId: z.string().nullable(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  verdict: z.string().nullable(),
+});
+export type CrmOutreachCycleRef = z.infer<typeof CrmOutreachCycleRef>;
