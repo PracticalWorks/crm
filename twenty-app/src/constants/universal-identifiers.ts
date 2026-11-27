@@ -28,6 +28,7 @@ export const OUTREACH_CYCLE_FIELDS = {
   verdict: '76f25adb-7ae7-4064-822f-5de8225068ab',
   people: '6ef0f4ba-daec-4dac-9eaa-30cc161af205',
   opportunities: '307e6f89-3e24-446c-9096-d785c68de67a',
+  sequenceKey: 'c4c92b08-3722-442b-9a4c-2a94292d6156',
 } as const;
 /** The reverse side of OutreachCycle.people, on the standard Person object. */
 export const PERSON_OUTREACH_CYCLE_FIELD_UNIVERSAL_IDENTIFIER = '9e7f0ed9-956a-4814-a9b8-b20fd2036ef7';

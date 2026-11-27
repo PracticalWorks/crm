@@ -27,7 +27,7 @@ describe('the Outreach cycle object', () => {
     expect(object).toMatchObject({ universalIdentifier: OUTREACH_CYCLE_OBJECT_UNIVERSAL_IDENTIFIER, nameSingular: 'outreachCycle', namePlural: 'outreachCycles' });
   });
 
-  it('carries the audience, hook, ask, dates and keep-or-kill verdict', () => {
+  it('carries the audience, hook, ask, dates, keep-or-kill verdict and sequence key', () => {
     expect(object.fields.map((f: { name: string; type: string; universalIdentifier: string }) => [f.name, String(f.type), f.universalIdentifier])).toEqual(
       expect.arrayContaining([
         ['audience', 'TEXT', OUTREACH_CYCLE_FIELDS.audience],
@@ -36,6 +36,7 @@ describe('the Outreach cycle object', () => {
         ['startDate', 'DATE', OUTREACH_CYCLE_FIELDS.startDate],
         ['endDate', 'DATE', OUTREACH_CYCLE_FIELDS.endDate],
         ['verdict', 'SELECT', OUTREACH_CYCLE_FIELDS.verdict],
+        ['sequenceKey', 'TEXT', OUTREACH_CYCLE_FIELDS.sequenceKey],
       ]),
     );
     expect(field('verdict').options.map((o: { value: string }) => o.value)).toEqual(OUTREACH_CYCLE_VERDICTS.map((o) => o.value));

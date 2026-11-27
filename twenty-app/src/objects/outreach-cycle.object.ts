@@ -32,6 +32,14 @@ export default defineObject({
   icon: 'IconFlask',
   fields: [
     {
+      universalIdentifier: OUTREACH_CYCLE_FIELDS.sequenceKey,
+      name: 'sequenceKey',
+      type: FieldType.TEXT,
+      label: 'Sequence key',
+      description: "The outreach sequence's name. Writers find the running cycle by it, so one key has one cycle whose dates hold today.",
+      icon: 'IconKey',
+    },
+    {
       universalIdentifier: OUTREACH_CYCLE_FIELDS.audience,
       name: 'audience',
       type: FieldType.TEXT,
