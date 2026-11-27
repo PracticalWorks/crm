@@ -28,6 +28,8 @@ const [company] = await crm.searchCompanies("Harbor");
 const people = await crm.findPeople({ email: "sam@harbor.example" });   // who just emailed us?
 ```
 
+Since 0.18.1 a CommonJS app can `require("@practicalworks/crm")` too: the package ships a CommonJS build beside the ESM one, with types for each.
+
 The base URL is injected by the caller. The API key is a secret passed in at construction, never stored or logged here.
 
 ## What it does

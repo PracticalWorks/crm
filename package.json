@@ -8,6 +8,6 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "guard": "node --test scripts/guard.test.mjs scripts/verify-npm-provenance.test.mjs && node scripts/guard.mjs",
-    "verify:npm-provenance": "node scripts/verify-npm-provenance.mjs @practicalworks/crm 0.18.0 PracticalWorks/crm"
+    "verify:npm-provenance": "node scripts/verify-npm-provenance.mjs @practicalworks/crm 0.18.1 PracticalWorks/crm"
   }
 }
