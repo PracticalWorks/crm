@@ -107,7 +107,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm guard && pnpm -r typecheck && pnpm -r test
+      - run: pnpm guard && pnpm build && pnpm -r typecheck && pnpm -r test
       - run: npm install -g twenty@${{ env.TWENTY_CLI_VERSION }}
       - name: Twenty key from Infisical over OIDC
         uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
